@@ -1,5 +1,69 @@
+// Simple landing page for the home route
+function LandingPage() {
+  const navigate = useNavigate();
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+      fontFamily: 'Inter, sans-serif',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        background: '#fff',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        borderRadius: 16,
+        padding: '2.5rem 2rem',
+        maxWidth: 400,
+        width: '100%',
+        textAlign: 'center',
+      }}>
+        <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#6366f1' }}>Welcome to Productivity App</h1>
+        <p style={{ color: '#64748b', fontSize: 18, marginBottom: 24 }}>
+          Choose a provider to view your tasks and calendar events.
+        </p>
+        <button
+          onClick={() => navigate('/microsoft')}
+          style={{
+            fontSize: 18,
+            padding: '12px 32px',
+            background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(59,130,246,0.08)',
+            marginBottom: 12,
+            marginRight: 8,
+            transition: 'background 0.2s',
+          }}
+        >Microsoft</button>
+        <button
+          onClick={() => navigate('/google')}
+          style={{
+            fontSize: 18,
+            padding: '12px 32px',
+            background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(52,168,83,0.08)',
+            marginLeft: 8,
+            transition: 'background 0.2s',
+          }}
+        >Google</button>
+      </div>
+    </div>
+  );
+}
+// ...existing code...
 // ...full code from previous message...
-// removed stray closing brace
+// ...existing code...
 
 import { useEffect, useState } from "react";
 import React from "react";
@@ -31,7 +95,7 @@ if (typeof window !== "undefined") {
 
 // Google OAuth config
 const GOOGLE_CLIENT_ID = "824212903399-a447na3jmq57g0btduivrvfum0iqhg1b.apps.googleusercontent.com";
-const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly";
+const GOOGLE_SCOPES = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks";
 
 // Load Google Identity Services script
 function loadGISScript(callback) {
@@ -54,82 +118,6 @@ function formatTime(dateTimeStr) {
 }
 
 
-function LandingPage() {
-  const navigate = useNavigate();
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
-      fontFamily: 'Inter, sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        background: '#fff',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-        borderRadius: 16,
-        padding: '2.5rem 2rem',
-        maxWidth: 400,
-        width: '100%',
-        textAlign: 'center',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <svg height="48" viewBox="0 0 48 48" width="48" style={{ verticalAlign: 'middle' }}>
-              <circle cx="24" cy="24" r="22" fill="#3b82f6" />
-              <text x="24" y="30" textAnchor="middle" fontSize="20" fill="#fff" fontFamily="Inter, sans-serif">P</text>
-            </svg>
-          </button>
-        </div>
-        <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#3b82f6' }}>Productivity App</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <button
-            onClick={() => navigate('/microsoft')}
-            style={{
-              fontSize: 18,
-              padding: '12px 32px',
-              background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(59,130,246,0.08)',
-              marginTop: 12,
-              transition: 'background 0.2s',
-            }}
-            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)'}
-            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)'}
-          >
-            Microsoft Tasks & Calendar
-          </button>
-          <button
-            onClick={() => navigate('/google')}
-            style={{
-              fontSize: 18,
-              padding: '12px 32px',
-              background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(52,168,83,0.08)',
-              marginTop: 12,
-              transition: 'background 0.2s',
-            }}
-            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)'}
-            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)'}
-          >
-            Google Tasks & Calendar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 function MicrosoftPage() {
@@ -161,13 +149,12 @@ function MicrosoftPage() {
     }
     initMsal();
     return () => { isMounted = false; };
-    // eslint-disable-next-line
   }, [navigate]);
 
   const loginMicrosoft = async () => {
     try {
       await msalInstance.initialize();
-      await msalInstance.loginRedirect({ scopes: ["Tasks.Read", "Calendars.Read"] });
+      await msalInstance.loginRedirect({ scopes: ["Tasks.ReadWrite", "Tasks.Read", "Calendars.Read"] });
     } catch (err) {
       setError(err.message);
     }
@@ -184,7 +171,6 @@ function MicrosoftPage() {
           account,
         });
         const accessToken = tokenResponse.accessToken;
-
         // Fetch task lists
         const listsRes = await fetch("https://graph.microsoft.com/v1.0/me/todo/lists", {
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -205,13 +191,13 @@ function MicrosoftPage() {
                   id: t.id,
                   title: t.title,
                   description: t.body?.content || "",
-                  completed: t.status === "completed"
+                  completed: t.status === "completed",
+                  listId: firstListId
                 }));
               }
             }
           }
         }
-
         // Fetch calendar entries
         const calRes = await fetch("https://graph.microsoft.com/v1.0/me/calendar/events?$orderby=start/dateTime&$top=2", {
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -345,9 +331,17 @@ function MicrosoftPage() {
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#6366f1', marginBottom: 8 }}>{task.title}</div>
                   <div style={{ color: '#64748b', marginBottom: 8 }}>{task.description}</div>
-                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42' }}>
+                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
+                  {!task.completed && (
+                    <button
+                      style={{
+                        background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
+                      }}
+                      onClick={() => handleMarkAsDone(task)}
+                    >Mark as Done</button>
+                  )}
                 </div>
               ))}
             </div>
@@ -605,9 +599,36 @@ function GooglePage() {
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#4285f4', marginBottom: 8 }}>{task.title}</div>
                   <div style={{ color: '#64748b', marginBottom: 8 }}>{task.description}</div>
-                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42' }}>
+                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
+                  {!task.completed && (
+                    <button
+                      style={{
+                        background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
+                      }}
+                      onClick={async () => {
+                        setLoading(true);
+                        setError(null);
+                        try {
+                          await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${task.id}`,
+                            {
+                              method: 'PATCH',
+                              headers: {
+                                'Authorization': `Bearer ${googleUser.accessToken}`,
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({ status: 'completed' })
+                            }
+                          );
+                        } catch (err) {
+                          setError('Failed to mark task as done');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >Mark as Done</button>
+                  )}
                 </div>
               ))}
             </div>
