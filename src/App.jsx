@@ -129,6 +129,38 @@ function MicrosoftPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Mark Microsoft task as done
+  const handleMarkAsDone = async (task) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        scopes: ["Tasks.ReadWrite", "Tasks.Read"],
+        account,
+      });
+      const accessToken = tokenResponse.accessToken;
+      const patchRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${task.listId}/tasks/${task.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'completed' })
+        }
+      );
+      if (!patchRes.ok) {
+        throw new Error('Failed to mark task as done');
+      }
+      // Refresh tasks after marking as done
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: true } : t));
+    } catch (err) {
+      setError('Failed to mark task as done');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     async function initMsal() {
