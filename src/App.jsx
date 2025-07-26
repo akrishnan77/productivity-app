@@ -4,24 +4,26 @@ function LandingPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+      background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
       fontFamily: 'Inter, sans-serif',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
+      padding: '1rem',
     }}>
       <div style={{
-        background: '#fff',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        background: '#23232a',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.32)',
         borderRadius: 16,
         padding: '2.5rem 2rem',
         maxWidth: 400,
         width: '100%',
         textAlign: 'center',
+        margin: '0 auto',
       }}>
-        <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#6366f1' }}>Welcome to Productivity App</h1>
-        <p style={{ color: '#64748b', fontSize: 18, marginBottom: 24 }}>
+        <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#a5b4fc' }}>Welcome to Productivity App</h1>
+        <p style={{ color: '#cbd5e1', fontSize: 18, marginBottom: 24 }}>
           Choose a provider to view your tasks and calendar events.
         </p>
         <button
@@ -29,13 +31,13 @@ function LandingPage() {
           style={{
             fontSize: 18,
             padding: '12px 32px',
-            background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)',
+            background: 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(59,130,246,0.08)',
+            boxShadow: '0 2px 8px rgba(59,130,246,0.18)',
             marginBottom: 12,
             marginRight: 8,
             transition: 'background 0.2s',
@@ -46,13 +48,13 @@ function LandingPage() {
           style={{
             fontSize: 18,
             padding: '12px 32px',
-            background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)',
+            background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(52,168,83,0.08)',
+            boxShadow: '0 2px 8px rgba(52,168,83,0.18)',
             marginLeft: 8,
             transition: 'background 0.2s',
           }}
@@ -211,15 +213,15 @@ function MicrosoftPage() {
         if (listsRes.ok) {
           const listsJson = await listsRes.json();
           if (Array.isArray(listsJson.value) && listsJson.value.length > 0) {
-            // Fetch tasks from the first list
+            // Fetch all tasks from the first list
             const firstListId = listsJson.value[0].id;
-            const tasksRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks?$top=2`, {
+            const tasksRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (tasksRes.ok) {
               const tasksJson = await tasksRes.json();
               if (Array.isArray(tasksJson.value)) {
-                tasksData = tasksJson.value.slice(0, 2).map(t => ({
+                tasksData = tasksJson.value.map(t => ({
                   id: t.id,
                   title: t.title,
                   description: t.body?.content || "",
@@ -230,14 +232,14 @@ function MicrosoftPage() {
             }
           }
         }
-        // Fetch calendar entries
-        const calRes = await fetch("https://graph.microsoft.com/v1.0/me/calendar/events?$orderby=start/dateTime&$top=2", {
+        // Fetch all calendar entries (limit to 20 for performance)
+        const calRes = await fetch("https://graph.microsoft.com/v1.0/me/calendar/events?$orderby=start/dateTime&$top=20", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         let calData = [];
         if (calRes.ok) {
           const allEvents = await calRes.json();
-          calData = Array.isArray(allEvents.value) ? allEvents.value.slice(0, 2).map((event, idx) => ({
+          calData = Array.isArray(allEvents.value) ? allEvents.value.map((event, idx) => ({
             id: idx + 1,
             subject: event.subject || "(No subject)",
             start: event.start?.dateTime || "",
@@ -260,7 +262,7 @@ function MicrosoftPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+        background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
         fontFamily: 'Inter, sans-serif',
         display: 'flex',
         flexDirection: 'column',
@@ -268,32 +270,32 @@ function MicrosoftPage() {
         justifyContent: 'center',
       }}>
         <div style={{
-          background: '#fff',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          background: '#23232a',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.32)',
           borderRadius: 16,
           padding: '2.5rem 2rem',
           maxWidth: 400,
           width: '100%',
           textAlign: 'center',
         }}>
-          <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#6366f1' }}>Microsoft Tasks & Calendar</h1>
+          <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#a5b4fc' }}>Microsoft Tasks & Calendar</h1>
           <button
             onClick={loginMicrosoft}
             style={{
               fontSize: 18,
               padding: '12px 32px',
-              background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)',
+              background: 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: 8,
               fontWeight: 600,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(59,130,246,0.08)',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.18)',
               marginTop: 12,
               transition: 'background 0.2s',
             }}
-            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)'}
-            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)'}
+            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)'}
+            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)'}
           >
             Sign in with Microsoft
           </button>
@@ -306,26 +308,27 @@ function MicrosoftPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+      background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
       fontFamily: 'Inter, sans-serif',
       padding: '0',
+      boxSizing: 'border-box',
     }}>
       <header style={{
         width: '100%',
-        background: '#6366f1',
-        color: '#fff',
+        background: '#23232a',
+        color: '#a5b4fc',
         padding: '1.5rem 0',
         textAlign: 'center',
         fontWeight: 700,
         fontSize: 28,
         letterSpacing: 1,
-        boxShadow: '0 2px 8px rgba(99,102,241,0.08)',
+        boxShadow: '0 2px 8px rgba(99,102,241,0.18)',
         marginBottom: 32,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 12, padding: 0 }}>
             <svg height="36" viewBox="0 0 48 48" width="36" style={{ verticalAlign: 'middle' }}>
-              <circle cx="24" cy="24" r="22" fill="#3b82f6" />
+              <circle cx="24" cy="24" r="22" fill="#6366f1" />
               <text x="24" y="30" textAnchor="middle" fontSize="20" fill="#fff" fontFamily="Inter, sans-serif">P</text>
             </svg>
           </button>
@@ -336,33 +339,43 @@ function MicrosoftPage() {
         maxWidth: 600,
         margin: '0 auto',
         padding: '0 1rem',
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         <section style={{ marginBottom: 40 }}>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#6366f1', marginBottom: 24, fontSize: 24 }}>
-            Your Top 2 Tasks
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+            Your Tasks
           </h2>
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>Loading tasks...</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>Loading tasks...</div>
           ) : tasks.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>No tasks found.</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex',
+              gap: 24,
+              overflowX: 'auto',
+              paddingBottom: 8,
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+            }}>
               {tasks.map((task) => (
                 <div key={task.id} style={{
-                  background: '#fff',
-                  boxShadow: '0 2px 12px rgba(59,130,246,0.08)',
+                  background: '#23232a',
+                  boxShadow: '0 2px 12px rgba(59,130,246,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
                   maxWidth: 280,
-                  flex: '1 1 240px',
+                  flex: '0 0 240px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
+                  marginRight: 16,
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#6366f1', marginBottom: 8 }}>{task.title}</div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>{task.description}</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
                   <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
@@ -380,34 +393,42 @@ function MicrosoftPage() {
           )}
         </section>
         <section>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#6366f1', marginBottom: 24, fontSize: 24 }}>
-            Your Next 2 Calendar Entries
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+            Your Calendar Entries
           </h2>
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>Loading calendar entries...</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>Loading calendar entries...</div>
           ) : calendarEvents.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>No upcoming events.</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex',
+              gap: 24,
+              overflowX: 'auto',
+              paddingBottom: 8,
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+            }}>
               {calendarEvents.map((event) => (
                 <div key={event.id} style={{
-                  background: '#fff',
-                  boxShadow: '0 2px 12px rgba(99,102,241,0.08)',
+                  background: '#23232a',
+                  boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
                   maxWidth: 280,
-                  flex: '1 1 240px',
+                  flex: '0 0 240px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
+                  marginRight: 16,
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#6366f1', marginBottom: 8 }}>{event.subject}</div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>
-                    {formatTime(event.start)} - {formatTime(event.end)}
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
+                    {event.start ? `${new Date(event.start).toLocaleDateString()} ` : ''}{formatTime(event.start)} - {event.end ? `${new Date(event.end).toLocaleDateString()} ` : ''}{formatTime(event.end)}
                   </div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>{event.location}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
                 </div>
               ))}
             </div>
@@ -478,7 +499,7 @@ function GooglePage() {
       try {
         const accessToken = googleUser.accessToken;
         // Fetch Google Tasks
-        const tasksRes = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?maxResults=2", {
+        const tasksRes = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         let tasksData = [];
@@ -493,9 +514,9 @@ function GooglePage() {
             }));
           }
         }
-        // Fetch Google Calendar events
+        // Fetch Google Calendar events (limit to 20 for performance)
         const now = new Date().toISOString();
-        const calRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&maxResults=2&singleEvents=true&orderBy=startTime`, {
+        const calRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&maxResults=20&singleEvents=true&orderBy=startTime`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         let calData = [];
@@ -526,7 +547,7 @@ function GooglePage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+        background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
         fontFamily: 'Inter, sans-serif',
         display: 'flex',
         flexDirection: 'column',
@@ -534,15 +555,15 @@ function GooglePage() {
         justifyContent: 'center',
       }}>
         <div style={{
-          background: '#fff',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          background: '#23232a',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.32)',
           borderRadius: 16,
           padding: '2.5rem 2rem',
           maxWidth: 400,
           width: '100%',
           textAlign: 'center',
         }}>
-          <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#4285f4' }}>Google Tasks & Calendar</h1>
+          <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#a5b4fc' }}>Google Tasks & Calendar</h1>
           <button
             onClick={loginGoogle}
             disabled={!googleReady}
@@ -550,18 +571,18 @@ function GooglePage() {
               opacity: googleReady ? 1 : 0.5,
               fontSize: 18,
               padding: '12px 32px',
-              background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)',
+              background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)',
               color: '#fff',
               border: 'none',
               borderRadius: 8,
               fontWeight: 600,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(52,168,83,0.08)',
+              boxShadow: '0 2px 8px rgba(52,168,83,0.18)',
               marginTop: 12,
               transition: 'background 0.2s',
             }}
-            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)'}
-            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)'}
+            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)'}
+            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)'}
           >
             Sign in with Google
           </button>
@@ -574,20 +595,21 @@ function GooglePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)',
+      background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
       fontFamily: 'Inter, sans-serif',
       padding: '0',
+      boxSizing: 'border-box',
     }}>
       <header style={{
         width: '100%',
-        background: '#4285f4',
-        color: '#fff',
+        background: '#23232a',
+        color: '#a5b4fc',
         padding: '1.5rem 0',
         textAlign: 'center',
         fontWeight: 700,
         fontSize: 28,
         letterSpacing: 1,
-        boxShadow: '0 2px 8px rgba(66,133,244,0.08)',
+        boxShadow: '0 2px 8px rgba(66,133,244,0.18)',
         marginBottom: 32,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -604,33 +626,43 @@ function GooglePage() {
         maxWidth: 600,
         margin: '0 auto',
         padding: '0 1rem',
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         <section style={{ marginBottom: 40 }}>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#4285f4', marginBottom: 24, fontSize: 24 }}>
-            Your Top 2 Tasks
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+            Your Tasks
           </h2>
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>Loading tasks...</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>Loading tasks...</div>
           ) : tasks.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>No tasks found.</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex',
+              gap: 24,
+              overflowX: 'auto',
+              paddingBottom: 8,
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+            }}>
               {tasks.map((task) => (
                 <div key={task.id} style={{
-                  background: '#fff',
-                  boxShadow: '0 2px 12px rgba(66,133,244,0.08)',
+                  background: '#23232a',
+                  boxShadow: '0 2px 12px rgba(66,133,244,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
                   maxWidth: 280,
-                  flex: '1 1 240px',
+                  flex: '0 0 240px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
+                  marginRight: 16,
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#4285f4', marginBottom: 8 }}>{task.title}</div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>{task.description}</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
                   <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
@@ -667,34 +699,42 @@ function GooglePage() {
           )}
         </section>
         <section>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#4285f4', marginBottom: 24, fontSize: 24 }}>
-            Your Next 2 Calendar Entries
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+            Your Calendar Entries
           </h2>
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>Loading calendar entries...</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>Loading calendar entries...</div>
           ) : calendarEvents.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 18 }}>No upcoming events.</div>
+            <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex',
+              gap: 24,
+              overflowX: 'auto',
+              paddingBottom: 8,
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+            }}>
               {calendarEvents.map((event) => (
                 <div key={event.id} style={{
-                  background: '#fff',
-                  boxShadow: '0 2px 12px rgba(66,133,244,0.08)',
+                  background: '#23232a',
+                  boxShadow: '0 2px 12px rgba(66,133,244,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
                   maxWidth: 280,
-                  flex: '1 1 240px',
+                  flex: '0 0 240px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
+                  marginRight: 16,
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#4285f4', marginBottom: 8 }}>{event.subject}</div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>
-                    {formatTime(event.start)} - {formatTime(event.end)}
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
+                    {event.start ? `${new Date(event.start).toLocaleDateString()} ` : ''}{formatTime(event.start)} - {event.end ? `${new Date(event.end).toLocaleDateString()} ` : ''}{formatTime(event.end)}
                   </div>
-                  <div style={{ color: '#64748b', marginBottom: 8 }}>{event.location}</div>
+                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
                 </div>
               ))}
             </div>
