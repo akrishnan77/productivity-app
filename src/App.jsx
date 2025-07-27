@@ -1342,8 +1342,25 @@ function GooglePage() {
           </button>
         </form>
         {/* ...existing code... */}
-        {/* Standard Task Input */}
-        <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
+        {/* Standard Task Input with due date */}
+        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+          <input
+            name="title"
+            type="text"
+            placeholder="Add a new task..."
+            style={{ flex: 2, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          />
+          <input
+            name="due"
+            type="date"
+            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          />
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
+            Add
+          </button>
+        </form>
         {/* ...existing code for tasks and calendar... */}
         <section style={{ marginBottom: 16 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
