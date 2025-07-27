@@ -197,7 +197,9 @@ function MicrosoftPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Create a new Microsoft task
+  // Manual due date state
+  const [manualDueDate, setManualDueDate] = useState("");
+  // Standard Microsoft task creation with due date
   const handleCreateTask = async (title) => {
     setLoading(true);
     setError(null);
@@ -215,14 +217,21 @@ function MicrosoftPage() {
       const listsJson = await listsRes.json();
       if (!Array.isArray(listsJson.value) || listsJson.value.length === 0) throw new Error('No task lists found');
       const firstListId = listsJson.value[0].id;
-      // Create task
+      // Build body
+      const body = { title };
+      if (manualDueDate) {
+        // Set to 9am UTC for consistency
+        const d = new Date(manualDueDate);
+        d.setUTCHours(9, 0, 0, 0);
+        body.dueDateTime = { dateTime: d.toISOString(), timeZone: "UTC" };
+      }
       const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('Failed to create task');
       const createdTask = await res.json();
@@ -231,12 +240,104 @@ function MicrosoftPage() {
         title: createdTask.title,
         description: createdTask.body?.content || "",
         completed: createdTask.status === "completed",
-        listId: firstListId
+        listId: firstListId,
+        due: createdTask.dueDateTime?.dateTime || null
       }]);
+      setManualDueDate("");
     } catch (err) {
       setError('Failed to create task');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // NLP-powered Microsoft task creation
+  const [nlpInput, setNlpInput] = useState("");
+  const [nlpLoading, setNlpLoading] = useState(false);
+  const handleNlpTask = async (e) => {
+    e.preventDefault();
+    if (!nlpInput.trim()) return;
+    setNlpLoading(true);
+    setError(null);
+    try {
+      // Google Cloud NLP API
+      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+      const nlpRes = await fetch(`https://language.googleapis.com/v1/documents:analyzeEntities?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            document: { type: "PLAIN_TEXT", content: nlpInput },
+            encodingType: "UTF8"
+          })
+        }
+      );
+      if (!nlpRes.ok) throw new Error("NLP API error");
+      const nlpJson = await nlpRes.json();
+      // Extract title and date/time from entities
+      let title = nlpInput;
+      let notes = "";
+      let due = "";
+      if (nlpJson.entities) {
+        // Find a DATE entity
+        const dateEntity = nlpJson.entities.find(e => e.type === "DATE");
+        if (dateEntity) {
+          // Remove ordinal suffixes (st, nd, rd, th)
+          let cleanDate = dateEntity.name.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+          let d = new Date(cleanDate);
+          if (!isNaN(d.getTime())) {
+            d.setUTCHours(9, 0, 0, 0);
+            due = d.toISOString();
+          }
+        }
+        // Use first non-DATE entity as title
+        const titleEntity = nlpJson.entities.find(e => e.type !== "DATE");
+        if (titleEntity) {
+          title = titleEntity.name;
+        }
+        notes = nlpInput;
+      }
+      // Create Microsoft Task with extracted info
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        scopes: ["Tasks.ReadWrite"],
+        account,
+      });
+      const accessToken = tokenResponse.accessToken;
+      // Get first list
+      const listsRes = await fetch("https://graph.microsoft.com/v1.0/me/todo/lists", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!listsRes.ok) throw new Error('Failed to fetch task lists');
+      const listsJson = await listsRes.json();
+      if (!Array.isArray(listsJson.value) || listsJson.value.length === 0) throw new Error('No task lists found');
+      const firstListId = listsJson.value[0].id;
+      // Build body
+      const body = { title };
+      if (notes) body.body = { content: notes, contentType: "text" };
+      if (due) body.dueDateTime = { dateTime: due, timeZone: "UTC" };
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      const createdTask = await res.json();
+      setTasks(prev => [...prev, {
+        id: createdTask.id,
+        title: createdTask.title,
+        description: createdTask.body?.content || "",
+        completed: createdTask.status === "completed",
+        listId: firstListId,
+        due: createdTask.dueDateTime?.dateTime || null
+      }]);
+      setNlpInput("");
+    } catch (err) {
+      setError("NLP task creation failed");
+    } finally {
+      setNlpLoading(false);
     }
   };
 
@@ -359,7 +460,6 @@ function MicrosoftPage() {
             const tasksRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
-              due: t.due || null
             if (tasksRes.ok) {
               const tasksJson = await tasksRes.json();
               if (Array.isArray(tasksJson.value)) {
@@ -368,7 +468,8 @@ function MicrosoftPage() {
                   title: t.title,
                   description: t.body?.content || "",
                   completed: t.status === "completed",
-                  listId: firstListId
+                  listId: firstListId,
+                  due: t.dueDateTime?.dateTime || null
                 }));
               }
             }
@@ -392,7 +493,15 @@ function MicrosoftPage() {
         setTasks(tasksData);
         setCalendarEvents(calData);
       } catch (err) {
-        setError("Failed to fetch data from Microsoft Graph API");
+        let errorMsg = "Failed to fetch data from Microsoft Graph API";
+        if (err && err.message) {
+          errorMsg += ": " + err.message;
+        }
+        if (err && err.response) {
+          errorMsg += ` (status: ${err.response.status})`;
+        }
+        console.error("Microsoft Graph API error:", err);
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -494,7 +603,41 @@ function MicrosoftPage() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
-        <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
+        {/* NLP Task Input */}
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+          <input
+            type="text"
+            value={nlpInput}
+            onChange={e => setNlpInput(e.target.value)}
+            placeholder="Enter a task in natural language (e.g. 'Remind me to call John next Friday at 2pm')"
+            style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={nlpLoading || loading}
+          />
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #22c55e 0%, #6366f1 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
+            {nlpLoading ? 'Processing...' : 'Add (NLP)'}
+          </button>
+        </form>
+        {/* Standard Task Input with due date */}
+        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+          <input
+            name="title"
+            type="text"
+            placeholder="Add a new task..."
+            style={{ flex: 2, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          />
+          <input
+            name="due"
+            type="date"
+            value={manualDueDate}
+            onChange={e => setManualDueDate(e.target.value)}
+            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          />
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
+            Add
+          </button>
+        </form>
         <section style={{ marginBottom: 16 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Tasks
@@ -507,8 +650,8 @@ function MicrosoftPage() {
             <Carousel>
               {tasks.map((task) => (
                 <div key={task.id} style={{
-                  background: '#23232a',
-                  boxShadow: '0 2px 12px rgba(59,130,246,0.18)',
+                  background: task.completed ? '#1e293b' : '#23232a',
+                  boxShadow: task.completed ? '0 2px 12px rgba(34,197,94,0.18)' : '0 2px 12px rgba(59,130,246,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
@@ -519,9 +662,17 @@ function MicrosoftPage() {
                   flexDirection: 'column',
                   alignItems: 'flex-start',
                   marginRight: 16,
+                  border: task.completed ? '2px solid #22c55e' : 'none',
+                  opacity: task.completed ? 0.85 : 1,
+                  transition: 'background 0.2s',
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
+                  {task.due && (
+                    <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
+                      Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+                    </div>
+                  )}
                   <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
@@ -937,8 +1088,8 @@ function GooglePage() {
             <Carousel>
               {tasks.map((task) => (
                 <div key={task.id} style={{
-                  background: '#23232a',
-                  boxShadow: '0 2px 12px rgba(66,133,244,0.18)',
+                  background: task.completed ? '#1e293b' : '#23232a',
+                  boxShadow: task.completed ? '0 2px 12px rgba(34,197,94,0.18)' : '0 2px 12px rgba(66,133,244,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
@@ -949,6 +1100,9 @@ function GooglePage() {
                   flexDirection: 'column',
                   alignItems: 'flex-start',
                   marginRight: 16,
+                  border: task.completed ? '2px solid #22c55e' : 'none',
+                  opacity: task.completed ? 0.85 : 1,
+                  transition: 'background 0.2s',
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
