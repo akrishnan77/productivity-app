@@ -189,6 +189,7 @@ function formatDateCustom(dateTimeStr) {
 
 function MicrosoftPage() {
   const [account, setAccount] = useState(null);
+  const [accounts, setAccounts] = useState([]);
   const [msalReady, setMsalReady] = useState(false);
   const [error, setError] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -283,8 +284,12 @@ function MicrosoftPage() {
           setAccount(response.account);
           navigate('/microsoft', { replace: true });
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('MSAL redirect error:', e);
+        setError('Microsoft login failed: ' + (e && e.message ? e.message : 'Unknown error'));
+      }
       const currentAccounts = msalInstance.getAllAccounts();
+      setAccounts(currentAccounts);
       if (currentAccounts && currentAccounts.length > 0) {
         setAccount(currentAccounts[0]);
       }
@@ -292,6 +297,28 @@ function MicrosoftPage() {
     initMsal();
     return () => { isMounted = false; };
   }, [navigate]);
+  // Account switching
+  const handleAccountSwitch = (event) => {
+    const selectedId = event.target.value;
+    const selected = accounts.find(acc => acc.homeAccountId === selectedId);
+    if (selected) {
+      setAccount(selected);
+    }
+  };
+
+  // Logout
+  const handleLogout = async () => {
+    setError(null);
+    try {
+      await msalInstance.logoutRedirect({ account });
+      setAccount(null);
+      setTasks([]);
+      setCalendarEvents([]);
+      navigate('/');
+    } catch (e) {
+      setError('Logout failed: ' + (e && e.message ? e.message : 'Unknown error'));
+    }
+  };
 
   const loginMicrosoft = async () => {
     try {
@@ -327,6 +354,7 @@ function MicrosoftPage() {
             const tasksRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
+              due: t.due || null
             if (tasksRes.ok) {
               const tasksJson = await tasksRes.json();
               if (Array.isArray(tasksJson.value)) {
@@ -442,29 +470,16 @@ function MicrosoftPage() {
             </svg>
           </button>
           <span>Microsoft Tasks & Calendar</span>
-          <button
-            onClick={() => {
-              // End MSAL session and prevent auto-login
-              msalInstance.logout({ postLogoutRedirectUri: window.location.origin });
-              setAccount(null);
-              // Use a timeout to ensure MSAL clears session before navigation
-              setTimeout(() => {
-                navigate('/');
-              }, 300);
-            }}
-            style={{
-              marginLeft: 24,
-              background: 'none',
-              border: '1px solid #6366f1',
-              color: '#a5b4fc',
-              borderRadius: 8,
-              padding: '6px 18px',
-              fontWeight: 600,
-              fontSize: 16,
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >Sign out</button>
+          {accounts.length > 1 && (
+            <select value={account?.homeAccountId || ''} onChange={handleAccountSwitch} style={{ marginLeft: 24, padding: '6px 12px', borderRadius: 8, fontWeight: 600, fontSize: 16, border: '1px solid #6366f1', background: '#18181b', color: '#a5b4fc', cursor: 'pointer' }}>
+              {accounts.map(acc => (
+                <option key={acc.homeAccountId} value={acc.homeAccountId}>{acc.username || acc.name || acc.homeAccountId}</option>
+              ))}
+            </select>
+          )}
+          {account && (
+            <button onClick={handleLogout} style={{ marginLeft: 24, background: 'none', border: '1px solid #6366f1', color: '#a5b4fc', borderRadius: 8, padding: '6px 18px', fontWeight: 600, fontSize: 16, cursor: 'pointer', transition: 'background 0.2s' }}>Sign out</button>
+          )}
         </div>
       </header>
       <main style={{
@@ -475,8 +490,8 @@ function MicrosoftPage() {
         boxSizing: 'border-box',
       }}>
         <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+        <section style={{ marginBottom: 16 }}>
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Tasks
           </h2>
           {loading ? (
@@ -518,8 +533,8 @@ function MicrosoftPage() {
             </Carousel>
           )}
         </section>
-        <section>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+        <section style={{ marginBottom: 0 }}>
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Calendar Entries
           </h2>
           {loading ? (
@@ -568,7 +583,12 @@ function GooglePage() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Create a new Google task
+  // NLP-powered Google task creation
+  const [nlpInput, setNlpInput] = useState("");
+  const [nlpLoading, setNlpLoading] = useState(false);
+  // ...existing code...
+
+  // Standard task creation (unchanged)
   const handleCreateTask = async (title) => {
     if (!googleUser) return;
     setLoading(true);
@@ -589,12 +609,97 @@ function GooglePage() {
         id: createdTask.id,
         title: createdTask.title,
         description: createdTask.notes || "",
-        completed: createdTask.status === "completed"
+        completed: createdTask.status === "completed",
+        due: createdTask.due || null
       }]);
     } catch (err) {
       setError("Failed to create task");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // NLP task creation using Google Cloud NLP API
+  const handleNlpTask = async (e) => {
+    e.preventDefault();
+    if (!nlpInput.trim() || !googleUser) return;
+    setNlpLoading(true);
+    setError(null);
+    try {
+      // Call Google Cloud NLP API (replace YOUR_API_KEY with your actual key)
+      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+      const nlpRes = await fetch(`https://language.googleapis.com/v1/documents:analyzeEntities?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            document: { type: "PLAIN_TEXT", content: nlpInput },
+            encodingType: "UTF8"
+          })
+        }
+      );
+      if (!nlpRes.ok) throw new Error("NLP API error");
+      const nlpJson = await nlpRes.json();
+      // ...existing code...
+      // Extract title and date/time from entities
+      let title = nlpInput;
+      let notes = "";
+      let due = "";
+      if (nlpJson.entities) {
+        // Find a DATE entity
+        const dateEntity = nlpJson.entities.find(e => e.type === "DATE");
+        if (dateEntity) {
+          // Try to parse date string to RFC3339
+          let parsedDate = null;
+          // Remove ordinal suffixes (st, nd, rd, th)
+          let cleanDate = dateEntity.name.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+          // Try parsing with Date
+          let d = new Date(cleanDate);
+          if (!isNaN(d.getTime())) {
+            // Set to 9am UTC for consistency
+            d.setUTCHours(9, 0, 0, 0);
+            parsedDate = d.toISOString();
+          }
+          if (parsedDate) {
+            due = parsedDate;
+          } else {
+            due = null; // Don't set if parsing fails
+          }
+        }
+        // Use first non-DATE entity as title
+        const titleEntity = nlpJson.entities.find(e => e.type !== "DATE");
+        if (titleEntity) {
+          title = titleEntity.name;
+        }
+        notes = nlpInput;
+      }
+      // Create Google Task with extracted info
+      const accessToken = googleUser.accessToken;
+      const body = { title };
+      if (notes) body.notes = notes;
+      if (due) body.due = due; // Google Tasks expects RFC3339 date
+      const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      const createdTask = await res.json();
+      setTasks(prev => [...prev, {
+        id: createdTask.id,
+        title: createdTask.title,
+        description: createdTask.notes || "",
+        completed: createdTask.status === "completed",
+        due: createdTask.due || null
+      }]);
+      setNlpInput("");
+    } catch (err) {
+      setError("NLP task creation failed");
+    } finally {
+      setNlpLoading(false);
     }
   };
 
@@ -659,7 +764,8 @@ function GooglePage() {
               id: t.id,
               title: t.title,
               description: t.notes || "",
-              completed: t.status === "completed"
+              completed: t.status === "completed",
+              due: t.due || null
             }));
           }
         }
@@ -771,12 +877,8 @@ function GooglePage() {
           <span>Google Tasks & Calendar</span>
           <button
             onClick={() => {
-              // Remove Google user and prevent auto-login
               setGoogleUser(null);
-              // Use a timeout to ensure state clears before navigation
-              setTimeout(() => {
-                navigate('/');
-              }, 300);
+              setTimeout(() => { navigate('/'); }, 300);
             }}
             style={{
               marginLeft: 24,
@@ -800,9 +902,26 @@ function GooglePage() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
+        {/* NLP Task Input */}
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+          <input
+            type="text"
+            value={nlpInput}
+            onChange={e => setNlpInput(e.target.value)}
+            placeholder="Enter a task in natural language (e.g. 'Remind me to call John next Friday at 2pm')"
+            style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={nlpLoading || loading}
+          />
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
+            {nlpLoading ? 'Processing...' : 'Add (NLP)'}
+          </button>
+        </form>
+        {/* ...existing code... */}
+        {/* Standard Task Input */}
         <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+        {/* ...existing code for tasks and calendar... */}
+        <section style={{ marginBottom: 16 }}>
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Tasks
           </h2>
           {loading ? (
@@ -828,6 +947,11 @@ function GooglePage() {
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
+                  {task.due && (
+                    <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
+                      Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+                    </div>
+                  )}
                   <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
                     Status: {task.completed ? 'Completed' : 'Not Started'}
                   </div>
@@ -863,8 +987,8 @@ function GooglePage() {
             </Carousel>
           )}
         </section>
-        <section>
-          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
+        <section style={{ marginBottom: 0 }}>
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Calendar Entries
           </h2>
           {loading ? (
@@ -907,19 +1031,8 @@ function GooglePage() {
 
 function App() {
   const navigate = useNavigate();
-  // Only run MSAL redirect logic if not signed out
-  useEffect(() => {
-    async function checkMsalRedirect() {
-      await msalInstance.initialize();
-      try {
-        const response = await msalInstance.handleRedirectPromise();
-        if (response && response.account) {
-          navigate('/microsoft', { replace: true });
-        }
-      } catch (e) {}
-    }
-    checkMsalRedirect();
-  }, [navigate]);
+  // ...existing code...
+  // ...existing code...
 
   return (
     <Routes>
