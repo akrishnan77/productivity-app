@@ -282,7 +282,6 @@ function MicrosoftPage() {
         const response = await msalInstance.handleRedirectPromise();
         if (response && response.account) {
           setAccount(response.account);
-          navigate('/microsoft', { replace: true });
         }
       } catch (e) {
         console.error('MSAL redirect error:', e);
@@ -297,6 +296,12 @@ function MicrosoftPage() {
     initMsal();
     return () => { isMounted = false; };
   }, [navigate]);
+
+  useEffect(() => {
+    if (msalReady && account) {
+      navigate('/microsoft', { replace: true });
+    }
+  }, [msalReady, account, navigate]);
   // Account switching
   const handleAccountSwitch = (event) => {
     const selectedId = event.target.value;
@@ -1031,8 +1036,37 @@ function GooglePage() {
 
 function App() {
   const navigate = useNavigate();
-  // ...existing code...
-  // ...existing code...
+  const [msalReady, setMsalReady] = useState(false);
+  const [account, setAccount] = useState(null);
+  // MSAL init and redirect logic
+  useEffect(() => {
+    let isMounted = true;
+    async function initMsal() {
+      await msalInstance.initialize();
+      if (!isMounted) return;
+      setMsalReady(true);
+      try {
+        const response = await msalInstance.handleRedirectPromise();
+        if (response && response.account) {
+          setAccount(response.account);
+        }
+      } catch (e) {
+        // ignore error here
+      }
+      const currentAccounts = msalInstance.getAllAccounts();
+      if (currentAccounts && currentAccounts.length > 0) {
+        setAccount(currentAccounts[0]);
+      }
+    }
+    initMsal();
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (msalReady && account && window.location.pathname === '/') {
+      navigate('/microsoft', { replace: true });
+    }
+  }, [msalReady, account, navigate]);
 
   return (
     <Routes>
