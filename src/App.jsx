@@ -254,6 +254,8 @@ function MicrosoftPage() {
   // NLP-powered Microsoft task creation
   const [nlpInput, setNlpInput] = useState("");
   const [nlpLoading, setNlpLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = React.useRef(null);
   const handleNlpTask = async (e) => {
     e.preventDefault();
     if (!nlpInput.trim()) return;
@@ -613,6 +615,80 @@ function MicrosoftPage() {
             style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={nlpLoading || loading}
           />
+          <button
+            type="button"
+            aria-label={recording ? "Stop recording" : "Record speech"}
+            style={{ background: recording ? '#ef4444' : '#6366f1', color: '#fff', border: 'none', borderRadius: '50%', width: 40, height: 40, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            disabled={nlpLoading || loading}
+            onClick={async () => {
+              if (recording) {
+                // Stop recording
+                setRecording(false);
+                if (mediaRecorderRef.current) {
+                  mediaRecorderRef.current.stop();
+                }
+                return;
+              }
+              if (!window.MediaRecorder || !navigator.mediaDevices) {
+                setError('Speech recording not supported in this browser');
+                return;
+              }
+              setError(null);
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new window.MediaRecorder(stream);
+                mediaRecorderRef.current = mediaRecorder;
+                let audioChunks = [];
+                mediaRecorder.ondataavailable = event => {
+                  if (event.data.size > 0) audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = async () => {
+                  setRecording(false);
+                  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    // Convert audio to base64
+                    const base64Audio = reader.result.split(',')[1];
+                    // Call Google Cloud Speech-to-Text API
+                    setNlpLoading(true);
+                    try {
+                      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+                      const sttRes = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            config: {
+                              encoding: 'WEBM_OPUS',
+                              sampleRateHertz: 48000,
+                              languageCode: 'en-US',
+                            },
+                            audio: { content: base64Audio }
+                          })
+                        }
+                      );
+                      if (!sttRes.ok) throw new Error('Speech-to-Text API error');
+                      const sttJson = await sttRes.json();
+                      const transcript = sttJson.results?.[0]?.alternatives?.[0]?.transcript || '';
+                      if (transcript) setNlpInput(transcript);
+                      else setError('No speech recognized');
+                    } catch (err) {
+                      setError('Speech-to-Text failed');
+                    } finally {
+                      setNlpLoading(false);
+                    }
+                  };
+                  reader.readAsDataURL(audioBlob);
+                };
+                mediaRecorder.start();
+                setRecording(true);
+              } catch (err) {
+                setError('Could not access microphone');
+              }
+            }}
+          >
+            <span role="img" aria-label={recording ? "stop" : "microphone"}>{recording ? "■" : "🎤"}</span>
+          </button>
           <button type="submit" style={{ background: 'linear-gradient(90deg, #22c55e 0%, #6366f1 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
@@ -742,6 +818,8 @@ function GooglePage() {
   // NLP-powered Google task creation
   const [nlpInput, setNlpInput] = useState("");
   const [nlpLoading, setNlpLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = React.useRef(null);
   // ...existing code...
 
   // Standard task creation (unchanged)
@@ -1068,6 +1146,79 @@ function GooglePage() {
             style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={nlpLoading || loading}
           />
+          <button
+            type="button"
+            aria-label={recording ? "Stop recording" : "Record speech"}
+            style={{ background: recording ? '#ef4444' : '#4285f4', color: '#fff', border: 'none', borderRadius: '50%', width: 40, height: 40, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            disabled={nlpLoading || loading}
+            onClick={async () => {
+              if (recording) {
+                setRecording(false);
+                if (mediaRecorderRef.current) {
+                  mediaRecorderRef.current.stop();
+                }
+                return;
+              }
+              if (!window.MediaRecorder || !navigator.mediaDevices) {
+                setError('Speech recording not supported in this browser');
+                return;
+              }
+              setError(null);
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new window.MediaRecorder(stream);
+                mediaRecorderRef.current = mediaRecorder;
+                let audioChunks = [];
+                mediaRecorder.ondataavailable = event => {
+                  if (event.data.size > 0) audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = async () => {
+                  setRecording(false);
+                  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    // Convert audio to base64
+                    const base64Audio = reader.result.split(',')[1];
+                    // Call Google Cloud Speech-to-Text API
+                    setNlpLoading(true);
+                    try {
+                      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+                      const sttRes = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            config: {
+                              encoding: 'WEBM_OPUS',
+                              sampleRateHertz: 48000,
+                              languageCode: 'en-US',
+                            },
+                            audio: { content: base64Audio }
+                          })
+                        }
+                      );
+                      if (!sttRes.ok) throw new Error('Speech-to-Text API error');
+                      const sttJson = await sttRes.json();
+                      const transcript = sttJson.results?.[0]?.alternatives?.[0]?.transcript || '';
+                      if (transcript) setNlpInput(transcript);
+                      else setError('No speech recognized');
+                    } catch (err) {
+                      setError('Speech-to-Text failed');
+                    } finally {
+                      setNlpLoading(false);
+                    }
+                  };
+                  reader.readAsDataURL(audioBlob);
+                };
+                mediaRecorder.start();
+                setRecording(true);
+              } catch (err) {
+                setError('Could not access microphone');
+              }
+            }}
+          >
+            <span role="img" aria-label={recording ? "stop" : "microphone"}>{recording ? "■" : "🎤"}</span>
+          </button>
           <button type="submit" style={{ background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
