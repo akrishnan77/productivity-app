@@ -71,6 +71,35 @@ import { useEffect, useState } from "react";
 import React from "react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { useNavigate, Routes, Route } from "react-router-dom";
+// Carousel for horizontal card navigation
+function Carousel({ children }) {
+  const [scroll, setScroll] = useState(0);
+  const containerRef = React.useRef(null);
+  const cardWidth = 280; // match card maxWidth
+  const visibleCards = 1; // only one card visible at a time
+  const totalCards = React.Children.count(children);
+  const maxScroll = Math.max(0, totalCards - visibleCards);
+
+  const handleLeft = () => setScroll(s => Math.max(0, s - 1));
+  const handleRight = () => setScroll(s => Math.min(maxScroll, s + 1));
+
+  React.useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ left: scroll * (cardWidth + 24), behavior: 'smooth' });
+    }
+  }, [scroll]);
+
+  // Only render the currently visible card
+  return (
+    <div style={{ position: 'relative', width: '100%', minHeight: 320 }}>
+      <button onClick={handleLeft} disabled={scroll === 0} style={{ position: 'absolute', left: 0, top: '40%', zIndex: 2, background: '#23232a', color: '#a5b4fc', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 24, cursor: 'pointer', opacity: scroll === 0 ? 0.5 : 1 }}>&lt;</button>
+      <div ref={containerRef} style={{ display: 'flex', gap: 24, overflow: 'hidden', scrollBehavior: 'smooth', paddingBottom: 8, margin: '0 48px', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}>
+        {React.Children.toArray(children)[scroll]}
+      </div>
+      <button onClick={handleRight} disabled={scroll === maxScroll} style={{ position: 'absolute', right: 0, top: '40%', zIndex: 2, background: '#23232a', color: '#a5b4fc', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 24, cursor: 'pointer', opacity: scroll === maxScroll ? 0.5 : 1 }}>&gt;</button>
+    </div>
+  );
+}
 // TaskConsole: input for creating tasks
 function TaskConsole({ onCreateTask, loading }) {
   const [title, setTitle] = useState("");
@@ -143,6 +172,16 @@ function formatTime(dateTimeStr) {
   const date = new Date(dateTimeStr);
   if (isNaN(date.getTime())) return dateTimeStr;
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateCustom(dateTimeStr) {
+  if (!dateTimeStr) return '';
+  const date = new Date(dateTimeStr);
+  if (isNaN(date.getTime())) return dateTimeStr;
+  const day = date.getDate();
+  const month = date.toLocaleString('default', { month: 'long' });
+  const year = date.getFullYear();
+  return `${day},${month} ${year}`;
 }
 
 
@@ -258,6 +297,7 @@ function MicrosoftPage() {
     try {
       await msalInstance.initialize();
       await msalInstance.loginRedirect({ scopes: ["Tasks.ReadWrite", "Tasks.Read", "Calendars.Read"] });
+      // After redirect, MSAL will handle navigation in useEffect
     } catch (err) {
       setError(err.message);
     }
@@ -394,7 +434,7 @@ function MicrosoftPage() {
         boxShadow: '0 2px 8px rgba(99,102,241,0.18)',
         marginBottom: 32,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 12, padding: 0 }}>
             <svg height="36" viewBox="0 0 48 48" width="36" style={{ verticalAlign: 'middle' }}>
               <circle cx="24" cy="24" r="22" fill="#6366f1" />
@@ -402,6 +442,29 @@ function MicrosoftPage() {
             </svg>
           </button>
           <span>Microsoft Tasks & Calendar</span>
+          <button
+            onClick={() => {
+              // End MSAL session and prevent auto-login
+              msalInstance.logout({ postLogoutRedirectUri: window.location.origin });
+              setAccount(null);
+              // Use a timeout to ensure MSAL clears session before navigation
+              setTimeout(() => {
+                navigate('/');
+              }, 300);
+            }}
+            style={{
+              marginLeft: 24,
+              background: 'none',
+              border: '1px solid #6366f1',
+              color: '#a5b4fc',
+              borderRadius: 8,
+              padding: '6px 18px',
+              fontWeight: 600,
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >Sign out</button>
         </div>
       </header>
       <main style={{
@@ -421,14 +484,7 @@ function MicrosoftPage() {
           ) : tasks.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
-            <div style={{
-              display: 'flex',
-              gap: 24,
-              overflowX: 'auto',
-              paddingBottom: 8,
-              scrollbarWidth: 'thin',
-              WebkitOverflowScrolling: 'touch',
-            }}>
+            <Carousel>
               {tasks.map((task) => (
                 <div key={task.id} style={{
                   background: '#23232a',
@@ -459,7 +515,7 @@ function MicrosoftPage() {
                   )}
                 </div>
               ))}
-            </div>
+            </Carousel>
           )}
         </section>
         <section>
@@ -471,14 +527,7 @@ function MicrosoftPage() {
           ) : calendarEvents.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
-            <div style={{
-              display: 'flex',
-              gap: 24,
-              overflowX: 'auto',
-              paddingBottom: 8,
-              scrollbarWidth: 'thin',
-              WebkitOverflowScrolling: 'touch',
-            }}>
+            <Carousel>
               {calendarEvents.map((event) => (
                 <div key={event.id} style={{
                   background: '#23232a',
@@ -496,12 +545,12 @@ function MicrosoftPage() {
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
-                    {event.start ? `${new Date(event.start).toLocaleDateString()} ` : ''}{formatTime(event.start)} - {event.end ? `${new Date(event.end).toLocaleDateString()} ` : ''}{formatTime(event.end)}
+                    {event.start ? `${formatDateCustom(event.start)} ` : ''}{formatTime(event.start)} - {event.end ? `${formatDateCustom(event.end)} ` : ''}{formatTime(event.end)}
                   </div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
                 </div>
               ))}
-            </div>
+            </Carousel>
           )}
         </section>
         {error && <div style={{ color: '#ef4444', marginTop: 24, textAlign: 'center', fontWeight: 500 }}>{error}</div>}
@@ -712,7 +761,7 @@ function GooglePage() {
         boxShadow: '0 2px 8px rgba(66,133,244,0.18)',
         marginBottom: 32,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 12, padding: 0 }}>
             <svg height="36" viewBox="0 0 48 48" width="36" style={{ verticalAlign: 'middle' }}>
               <circle cx="24" cy="24" r="22" fill="#4285f4" />
@@ -720,6 +769,28 @@ function GooglePage() {
             </svg>
           </button>
           <span>Google Tasks & Calendar</span>
+          <button
+            onClick={() => {
+              // Remove Google user and prevent auto-login
+              setGoogleUser(null);
+              // Use a timeout to ensure state clears before navigation
+              setTimeout(() => {
+                navigate('/');
+              }, 300);
+            }}
+            style={{
+              marginLeft: 24,
+              background: 'none',
+              border: '1px solid #4285f4',
+              color: '#a5b4fc',
+              borderRadius: 8,
+              padding: '6px 18px',
+              fontWeight: 600,
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >Sign out</button>
         </div>
       </header>
       <main style={{
@@ -739,14 +810,7 @@ function GooglePage() {
           ) : tasks.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
-            <div style={{
-              display: 'flex',
-              gap: 24,
-              overflowX: 'auto',
-              paddingBottom: 8,
-              scrollbarWidth: 'thin',
-              WebkitOverflowScrolling: 'touch',
-            }}>
+            <Carousel>
               {tasks.map((task) => (
                 <div key={task.id} style={{
                   background: '#23232a',
@@ -796,7 +860,7 @@ function GooglePage() {
                   )}
                 </div>
               ))}
-            </div>
+            </Carousel>
           )}
         </section>
         <section>
@@ -808,14 +872,7 @@ function GooglePage() {
           ) : calendarEvents.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
-            <div style={{
-              display: 'flex',
-              gap: 24,
-              overflowX: 'auto',
-              paddingBottom: 8,
-              scrollbarWidth: 'thin',
-              WebkitOverflowScrolling: 'touch',
-            }}>
+            <Carousel>
               {calendarEvents.map((event) => (
                 <div key={event.id} style={{
                   background: '#23232a',
@@ -833,12 +890,12 @@ function GooglePage() {
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
-                    {event.start ? `${new Date(event.start).toLocaleDateString()} ` : ''}{formatTime(event.start)} - {event.end ? `${new Date(event.end).toLocaleDateString()} ` : ''}{formatTime(event.end)}
+                    {event.start ? `${formatDateCustom(event.start)} ` : ''}{formatTime(event.start)} - {event.end ? `${formatDateCustom(event.end)} ` : ''}{formatTime(event.end)}
                   </div>
                   <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
                 </div>
               ))}
-            </div>
+            </Carousel>
           )}
         </section>
         {error && <div style={{ color: '#ef4444', marginTop: 24, textAlign: 'center', fontWeight: 500 }}>{error}</div>}
@@ -850,6 +907,7 @@ function GooglePage() {
 
 function App() {
   const navigate = useNavigate();
+  // Only run MSAL redirect logic if not signed out
   useEffect(() => {
     async function checkMsalRedirect() {
       await msalInstance.initialize();
