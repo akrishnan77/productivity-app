@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Launch React Dev Server",
+			"type": "shell",
+			"command": "cd \"c:\\D Drive\\Projects\\NewTaskBoard\\frontend\" && npm run dev",
+			"group": "test",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

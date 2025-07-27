@@ -814,22 +814,22 @@ function MicrosoftPage() {
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
             <Carousel>
-              {tasks.map((task) => (
+              {tasks.map((task, idx) => (
                 <div key={task.id} style={{
-                  background: task.completed ? '#1e293b' : '#23232a',
-                  boxShadow: task.completed ? '0 2px 12px rgba(34,197,94,0.18)' : '0 2px 12px rgba(59,130,246,0.18)',
+                  background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
+                  boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(59,130,246,0.18)',
                   borderRadius: 12,
-                  padding: '1.5rem 1.25rem',
-                  minWidth: 240,
-                  maxWidth: 280,
-                  flex: '0 0 240px',
+                  padding: '1.25rem 1rem',
+                  minWidth: 180,
+                  maxWidth: 200,
+                  flex: '0 0 180px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
-                  marginRight: 16,
-                  border: task.completed ? '2px solid #22c55e' : 'none',
-                  opacity: task.completed ? 0.85 : 1,
+                  marginRight: idx === tasks.length - 1 ? 0 : 16,
+                  border: 'none',
+                  opacity: task.completed ? 0.95 : 1,
                   transition: 'background 0.2s',
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
@@ -1357,20 +1357,20 @@ function GooglePage() {
             <Carousel>
               {tasks.map((task) => (
                 <div key={task.id} style={{
-                  background: task.completed ? '#1e293b' : '#23232a',
-                  boxShadow: task.completed ? '0 2px 12px rgba(34,197,94,0.18)' : '0 2px 12px rgba(66,133,244,0.18)',
+                  background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
+                  boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(66,133,244,0.18)',
                   borderRadius: 12,
-                  padding: '1.5rem 1.25rem',
-                  minWidth: 240,
-                  maxWidth: 280,
-                  flex: '0 0 240px',
+                  padding: '1.25rem 1rem',
+                  minWidth: 180,
+                  maxWidth: 200,
+                  flex: '0 0 180px',
                   marginBottom: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
                   marginRight: 16,
-                  border: task.completed ? '2px solid #22c55e' : 'none',
-                  opacity: task.completed ? 0.85 : 1,
+                  border: 'none',
+                  opacity: task.completed ? 0.95 : 1,
                   transition: 'background 0.2s',
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
