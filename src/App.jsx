@@ -76,7 +76,7 @@ function Carousel({ children }) {
   const [scroll, setScroll] = useState(0);
   const containerRef = React.useRef(null);
   const cardWidth = 280; // match card maxWidth
-  const visibleCards = 1; // only one card visible at a time
+  const visibleCards = 1; // show 1 card at a time
   const totalCards = React.Children.count(children);
   const maxScroll = Math.max(0, totalCards - visibleCards);
 
@@ -89,14 +89,76 @@ function Carousel({ children }) {
     }
   }, [scroll]);
 
-  // Only render the currently visible card
+  // Render a slice of visible cards
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: 320 }}>
-      <button onClick={handleLeft} disabled={scroll === 0} style={{ position: 'absolute', left: 0, top: '40%', zIndex: 2, background: '#23232a', color: '#a5b4fc', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 24, cursor: 'pointer', opacity: scroll === 0 ? 0.5 : 1 }}>&lt;</button>
-      <div ref={containerRef} style={{ display: 'flex', gap: 24, overflow: 'hidden', scrollBehavior: 'smooth', paddingBottom: 8, margin: '0 48px', justifyContent: 'center', alignItems: 'center', minHeight: 320 }}>
-        {React.Children.toArray(children)[scroll]}
+    <div style={{ position: 'relative', width: '100%', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <button
+        onClick={handleLeft}
+        disabled={scroll === 0}
+        style={{
+          position: 'relative',
+          left: 0,
+          zIndex: 2,
+          background: '#23232a',
+          color: '#a5b4fc',
+          border: 'none',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          fontSize: 24,
+          cursor: 'pointer',
+          opacity: scroll === 0 ? 0.5 : 1,
+          marginRight: 16,
+        }}
+      >&lt;</button>
+      <div
+        ref={containerRef}
+        style={{
+          display: 'flex',
+          gap: 24,
+          overflow: 'hidden',
+          scrollBehavior: 'smooth',
+          paddingBottom: 8,
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: 320,
+          width: `${cardWidth}px`, // exactly 1 card wide
+          maxWidth: `${cardWidth}px`,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+        }}
+      >
+        {
+          (() => {
+            const arr = React.Children.toArray(children);
+            // If not enough cards to fill a full set, only show the remaining cards
+            const start = Math.min(scroll, Math.max(0, arr.length - visibleCards));
+            const end = Math.min(start + visibleCards, arr.length);
+            return arr.slice(start, end).map((child, idx) => (
+              <div key={idx} style={{ flex: `0 0 ${cardWidth}px`, maxWidth: cardWidth }}>{child}</div>
+            ));
+          })()
+        }
       </div>
-      <button onClick={handleRight} disabled={scroll === maxScroll} style={{ position: 'absolute', right: 0, top: '40%', zIndex: 2, background: '#23232a', color: '#a5b4fc', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 24, cursor: 'pointer', opacity: scroll === maxScroll ? 0.5 : 1 }}>&gt;</button>
+      <button
+        onClick={handleRight}
+        disabled={scroll === maxScroll}
+        style={{
+          position: 'relative',
+          right: 0,
+          zIndex: 2,
+          background: '#23232a',
+          color: '#a5b4fc',
+          border: 'none',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          fontSize: 24,
+          cursor: 'pointer',
+          opacity: scroll === maxScroll ? 0.5 : 1,
+          marginLeft: 16,
+        }}
+      >&gt;</button>
     </div>
   );
 }
@@ -188,6 +250,32 @@ function formatDateCustom(dateTimeStr) {
 
 
 function MicrosoftPage() {
+  // Voice confirmation using Google Text-to-Speech API
+  async function speakConfirmation() {
+    try {
+      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+      const ttsRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: { text: "Task has been added" },
+            voice: { languageCode: "en-US", ssmlGender: "FEMALE" },
+            audioConfig: { audioEncoding: "MP3" }
+          })
+        }
+      );
+      if (!ttsRes.ok) return;
+      const ttsJson = await ttsRes.json();
+      const audioContent = ttsJson.audioContent;
+      if (audioContent) {
+        const audio = new window.Audio("data:audio/mp3;base64," + audioContent);
+        audio.play();
+      }
+    } catch (err) {
+      // Ignore TTS errors
+    }
+  }
   const [account, setAccount] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [msalReady, setMsalReady] = useState(false);
@@ -244,6 +332,7 @@ function MicrosoftPage() {
         due: createdTask.dueDateTime?.dateTime || null
       }]);
       setManualDueDate("");
+      await speakConfirmation();
     } catch (err) {
       setError('Failed to create task');
     } finally {
@@ -336,6 +425,7 @@ function MicrosoftPage() {
         due: createdTask.dueDateTime?.dateTime || null
       }]);
       setNlpInput("");
+      await speakConfirmation();
     } catch (err) {
       setError("NLP task creation failed");
     } finally {
@@ -808,6 +898,32 @@ function MicrosoftPage() {
 
 
 function GooglePage() {
+  // Voice confirmation using Google Text-to-Speech API
+  async function speakConfirmation() {
+    try {
+      const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+      const ttsRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: { text: "Task has been added" },
+            voice: { languageCode: "en-US", ssmlGender: "FEMALE" },
+            audioConfig: { audioEncoding: "MP3" }
+          })
+        }
+      );
+      if (!ttsRes.ok) return;
+      const ttsJson = await ttsRes.json();
+      const audioContent = ttsJson.audioContent;
+      if (audioContent) {
+        const audio = new window.Audio("data:audio/mp3;base64," + audioContent);
+        audio.play();
+      }
+    } catch (err) {
+      // Ignore TTS errors
+    }
+  }
   const [googleReady, setGoogleReady] = useState(false);
   const [googleUser, setGoogleUser] = useState(null);
   const [error, setError] = useState(null);
@@ -846,6 +962,7 @@ function GooglePage() {
         completed: createdTask.status === "completed",
         due: createdTask.due || null
       }]);
+      await speakConfirmation();
     } catch (err) {
       setError("Failed to create task");
     } finally {
@@ -930,6 +1047,7 @@ function GooglePage() {
         due: createdTask.due || null
       }]);
       setNlpInput("");
+      await speakConfirmation();
     } catch (err) {
       setError("NLP task creation failed");
     } finally {
