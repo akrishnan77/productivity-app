@@ -71,6 +71,32 @@ import { useEffect, useState } from "react";
 import React from "react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { useNavigate, Routes, Route } from "react-router-dom";
+// TaskConsole: input for creating tasks
+function TaskConsole({ onCreateTask, loading }) {
+  const [title, setTitle] = useState("");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onCreateTask(title);
+      setTitle("");
+    }
+  };
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+      <input
+        type="text"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        placeholder="Add a new task..."
+        style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+        disabled={loading}
+      />
+      <button type="submit" style={{ background: 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
+        Add
+      </button>
+    </form>
+  );
+}
 
 // Add Google Fonts
 const fontLink = document.createElement('link');
@@ -130,6 +156,49 @@ function MicrosoftPage() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Create a new Microsoft task
+  const handleCreateTask = async (title) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        scopes: ["Tasks.ReadWrite"],
+        account,
+      });
+      const accessToken = tokenResponse.accessToken;
+      // Get first list
+      const listsRes = await fetch("https://graph.microsoft.com/v1.0/me/todo/lists", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!listsRes.ok) throw new Error('Failed to fetch task lists');
+      const listsJson = await listsRes.json();
+      if (!Array.isArray(listsJson.value) || listsJson.value.length === 0) throw new Error('No task lists found');
+      const firstListId = listsJson.value[0].id;
+      // Create task
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      const createdTask = await res.json();
+      setTasks(prev => [...prev, {
+        id: createdTask.id,
+        title: createdTask.title,
+        description: createdTask.body?.content || "",
+        completed: createdTask.status === "completed",
+        listId: firstListId
+      }]);
+    } catch (err) {
+      setError('Failed to create task');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Mark Microsoft task as done
   const handleMarkAsDone = async (task) => {
@@ -342,6 +411,7 @@ function MicrosoftPage() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
+        <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
         <section style={{ marginBottom: 40 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
             Your Tasks
@@ -448,6 +518,36 @@ function GooglePage() {
   const [tasks, setTasks] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Create a new Google task
+  const handleCreateTask = async (title) => {
+    if (!googleUser) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const accessToken = googleUser.accessToken;
+      const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      const createdTask = await res.json();
+      setTasks(prev => [...prev, {
+        id: createdTask.id,
+        title: createdTask.title,
+        description: createdTask.notes || "",
+        completed: createdTask.status === "completed"
+      }]);
+    } catch (err) {
+      setError("Failed to create task");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadGISScript(() => setGoogleReady(true));
@@ -629,6 +729,7 @@ function GooglePage() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
+        <TaskConsole onCreateTask={handleCreateTask} loading={loading} />
         <section style={{ marginBottom: 40 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 24, fontSize: 24 }}>
             Your Tasks
