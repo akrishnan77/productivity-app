@@ -285,9 +285,10 @@ function MicrosoftPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Manual due date state
+  // Manual due date and category state
   const [manualDueDate, setManualDueDate] = useState("");
-  // Standard Microsoft task creation with due date
+  const [manualCategory, setManualCategory] = useState("Work");
+  // Standard Microsoft task creation with due date and category
   const handleCreateTask = async (title) => {
     setLoading(true);
     setError(null);
@@ -301,18 +302,23 @@ function MicrosoftPage() {
       const listsRes = await fetch("https://graph.microsoft.com/v1.0/me/todo/lists", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!listsRes.ok) throw new Error('Failed to fetch task lists');
+      if (!listsRes.ok) throw new Error("Failed to fetch task lists");
       const listsJson = await listsRes.json();
-      if (!Array.isArray(listsJson.value) || listsJson.value.length === 0) throw new Error('No task lists found');
+      if (!Array.isArray(listsJson.value) || listsJson.value.length === 0) throw new Error("No task lists found");
       const firstListId = listsJson.value[0].id;
       // Build body
       const body = { title };
       if (manualDueDate) {
-        // Set to 9am UTC for consistency
-        const d = new Date(manualDueDate);
-        d.setUTCHours(9, 0, 0, 0);
-        body.dueDateTime = { dateTime: d.toISOString(), timeZone: "UTC" };
+        body.dueDateTime = {
+          dateTime: manualDueDate + "T09:00:00.000Z",
+          timeZone: "UTC"
+        };
       }
+      // Add category to notes/body
+      body.body = {
+        contentType: "text",
+        content: `Category: ${manualCategory}`
+      };
       const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
         method: 'POST',
         headers: {
@@ -332,9 +338,10 @@ function MicrosoftPage() {
         due: createdTask.dueDateTime?.dateTime || null
       }]);
       setManualDueDate("");
+      setManualCategory("Work");
       await speakConfirmation();
     } catch (err) {
-      setError('Failed to create task');
+      setError("Failed to create task");
     } finally {
       setLoading(false);
     }
@@ -404,7 +411,10 @@ function MicrosoftPage() {
       const firstListId = listsJson.value[0].id;
       // Build body
       const body = { title };
-      if (notes) body.body = { content: notes, contentType: "text" };
+      // Always include category in body content
+      let bodyContent = `Category: ${manualCategory}`;
+      if (notes) bodyContent += `\n${notes}`;
+      body.body = { content: bodyContent, contentType: "text" };
       if (due) body.dueDateTime = { dateTime: due, timeZone: "UTC" };
       const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
         method: 'POST',
@@ -708,7 +718,7 @@ function MicrosoftPage() {
           <button
             type="button"
             aria-label={recording ? "Stop recording" : "Record speech"}
-            style={{ background: recording ? '#ef4444' : '#6366f1', color: '#fff', border: 'none', borderRadius: '50%', width: 40, height: 40, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ background: recording ? '#ef4444' : '#4285f4', color: '#fff', border: 'none', borderRadius: '50%', width: 40, height: 40, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             disabled={nlpLoading || loading}
             onClick={async () => {
               if (recording) {
@@ -779,12 +789,32 @@ function MicrosoftPage() {
           >
             <span role="img" aria-label={recording ? "stop" : "microphone"}>{recording ? "■" : "🎤"}</span>
           </button>
-          <button type="submit" style={{ background: 'linear-gradient(90deg, #22c55e 0%, #6366f1 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
+          {/* Image upload for Google Vision OCR */}
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleImageUpload}
+            disabled={visionLoading || nlpLoading || loading}
+          />
+          <button
+            type="button"
+            style={{ background: '#34a853', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontWeight: 600, cursor: visionLoading ? 'not-allowed' : 'pointer', fontSize: 18, minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            disabled={visionLoading || nlpLoading || loading}
+            onClick={() => {
+              if (fileInputRef.current) fileInputRef.current.click();
+            }}
+            title="Extract text from image (Google Vision)"
+          >
+            {visionLoading ? '...' : <span role="img" aria-label="camera">📷</span>}
+          </button>
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
         </form>
-        {/* Standard Task Input with due date */}
-        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+        {/* Standard Task Input with due date and category */}
+        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
           <input
             name="title"
             type="text"
@@ -800,7 +830,17 @@ function MicrosoftPage() {
             style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={loading}
           />
-          <button type="submit" style={{ background: 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
+          <select
+            name="category"
+            value={manualCategory}
+            onChange={e => setManualCategory(e.target.value)}
+            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          >
+            <option value="Work">Work</option>
+            <option value="Personal">Personal</option>
+          </select>
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
             Add
           </button>
         </form>
@@ -814,44 +854,60 @@ function MicrosoftPage() {
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
             <Carousel>
-              {tasks.map((task, idx) => (
-                <div key={task.id} style={{
-                  background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
-                  boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(59,130,246,0.18)',
-                  borderRadius: 12,
-                  padding: '1.25rem 1rem',
-                  minWidth: 180,
-                  maxWidth: 200,
-                  flex: '0 0 180px',
-                  marginBottom: 8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  marginRight: idx === tasks.length - 1 ? 0 : 16,
-                  border: 'none',
-                  opacity: task.completed ? 0.95 : 1,
-                  transition: 'background 0.2s',
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
-                  {task.due && (
-                    <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
-                      Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+              {tasks.map((task, idx) => {
+                // Extract category from description/notes if present
+                let category = null;
+                let description = task.description || "";
+                const catMatch = description.match(/Category:\s*([A-Za-z]+)/i);
+                if (catMatch) {
+                  category = catMatch[1];
+                  // Remove the category line from description for display
+                  description = description.replace(/Category:\s*[A-Za-z]+\s*/i, '').trim();
+                }
+                return (
+                  <div key={task.id} style={{
+                    background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
+                    boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(59,130,246,0.18)',
+                    borderRadius: 12,
+                    padding: '1.25rem 1rem',
+                    minWidth: 180,
+                    maxWidth: 200,
+                    flex: '0 0 180px',
+                    marginBottom: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    marginRight: idx === tasks.length - 1 ? 0 : 16,
+                    border: 'none',
+                    opacity: task.completed ? 0.95 : 1,
+                    transition: 'background 0.2s',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
+                    {category && (
+                      <div style={{ color: '#34a853', fontWeight: 600, marginBottom: 6 }}>Category: {category}</div>
+                    )}
+                    {description && (
+                      <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{description}</div>
+                    )}
+                    {task.due && (
+                      <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
+                        Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+                      </div>
+                    )}
+                    <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
+                      Status: {task.completed ? 'Completed' : 'Not Started'}
                     </div>
-                  )}
-                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
-                    Status: {task.completed ? 'Completed' : 'Not Started'}
+                    {!task.completed && (
+                      <button
+                        style={{
+                          background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
+                        }}
+                        onClick={() => handleMarkAsDone(task)}
+                      >Mark as Done</button>
+                    )}
                   </div>
-                  {!task.completed && (
-                    <button
-                      style={{
-                        background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
-                      }}
-                      onClick={() => handleMarkAsDone(task)}
-                    >Mark as Done</button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </Carousel>
           )}
         </section>
@@ -898,6 +954,7 @@ function MicrosoftPage() {
 
 
 function GooglePage() {
+  const navigate = useNavigate();
   // Voice confirmation using Google Text-to-Speech API
   async function speakConfirmation() {
     try {
@@ -930,6 +987,8 @@ function GooglePage() {
   const [tasks, setTasks] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Prevent multiple concurrent Google login requests
+  const [googleLoginInProgress, setGoogleLoginInProgress] = useState(false);
 
   // NLP-powered Google task creation
   const [nlpInput, setNlpInput] = useState("");
@@ -982,22 +1041,26 @@ function GooglePage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
-  // ...existing code...
-
-  // Standard task creation (unchanged)
+  // Standard task creation with category
+  const [manualCategory, setManualCategory] = useState("Work");
+  const [manualDueDate, setManualDueDate] = useState("");
   const handleCreateTask = async (title) => {
     if (!googleUser) return;
     setLoading(true);
     setError(null);
     try {
       const accessToken = googleUser.accessToken;
+      const body = { title };
+      if (manualDueDate) body.due = manualDueDate + "T09:00:00.000Z";
+      // Add category to notes
+      body.notes = `Category: ${manualCategory}`;
       const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('Failed to create task');
       const createdTask = await res.json();
@@ -1008,6 +1071,8 @@ function GooglePage() {
         completed: createdTask.status === "completed",
         due: createdTask.due || null
       }]);
+      setManualDueDate("");
+      setManualCategory("Work");
       await speakConfirmation();
     } catch (err) {
       setError("Failed to create task");
@@ -1015,15 +1080,14 @@ function GooglePage() {
       setLoading(false);
     }
   };
-
-  // NLP task creation using Google Cloud NLP API
+  // NLP-powered task creation
   const handleNlpTask = async (e) => {
     e.preventDefault();
     if (!nlpInput.trim() || !googleUser) return;
     setNlpLoading(true);
     setError(null);
     try {
-      // Call Google Cloud NLP API (replace YOUR_API_KEY with your actual key)
+      // Call Google Cloud NLP API
       const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
       const nlpRes = await fetch(`https://language.googleapis.com/v1/documents:analyzeEntities?key=${apiKey}`,
         {
@@ -1037,7 +1101,6 @@ function GooglePage() {
       );
       if (!nlpRes.ok) throw new Error("NLP API error");
       const nlpJson = await nlpRes.json();
-      // ...existing code...
       // Extract title and date/time from entities
       let title = nlpInput;
       let notes = "";
@@ -1046,21 +1109,17 @@ function GooglePage() {
         // Find a DATE entity
         const dateEntity = nlpJson.entities.find(e => e.type === "DATE");
         if (dateEntity) {
-          // Try to parse date string to RFC3339
           let parsedDate = null;
-          // Remove ordinal suffixes (st, nd, rd, th)
           let cleanDate = dateEntity.name.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
-          // Try parsing with Date
           let d = new Date(cleanDate);
           if (!isNaN(d.getTime())) {
-            // Set to 9am UTC for consistency
             d.setUTCHours(9, 0, 0, 0);
             parsedDate = d.toISOString();
           }
           if (parsedDate) {
             due = parsedDate;
           } else {
-            due = null; // Don't set if parsing fails
+            due = null;
           }
         }
         // Use first non-DATE entity as title
@@ -1073,8 +1132,11 @@ function GooglePage() {
       // Create Google Task with extracted info
       const accessToken = googleUser.accessToken;
       const body = { title };
-      if (notes) body.notes = notes;
-      if (due) body.due = due; // Google Tasks expects RFC3339 date
+      // Always include category in notes
+      let notesContent = `Category: ${manualCategory}`;
+      if (notes) notesContent += `\n${notes}`;
+      body.notes = notesContent;
+      if (due) body.due = due;
       const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
         method: 'POST',
         headers: {
@@ -1101,50 +1163,99 @@ function GooglePage() {
     }
   };
 
-  useEffect(() => {
-    loadGISScript(() => setGoogleReady(true));
-  }, []);
-
-  const loginGoogle = async () => {
-    setError(null);
+  // Mark Google task as done
+  const handleMarkAsDone = async (task) => {
     setLoading(true);
+    setError(null);
     try {
-      if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-        throw new Error("Google Identity Services not loaded");
+      const accessToken = googleUser.accessToken;
+      const patchRes = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${task.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'completed' })
+        }
+      );
+      if (!patchRes.ok) {
+        throw new Error('Failed to mark task as done');
       }
-      window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: GOOGLE_SCOPES,
-        callback: async (tokenResponse) => {
-          if (!tokenResponse || !tokenResponse.access_token) {
-            setError("Google sign-in failed: No access token");
-            setLoading(false);
-            return;
-          }
-          // Fetch user info
-          const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-          });
-          const userInfo = await userInfoRes.json();
-          setGoogleUser({
-            ...userInfo,
-            accessToken: tokenResponse.access_token,
-          });
-          setLoading(false);
-        },
-        error_callback: (err) => {
-          setError("Google sign-in failed: " + (err && err.error ? err.error : "Unknown error"));
-          setLoading(false);
-        },
-      }).requestAccessToken();
+      // Refresh tasks after marking as done
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: true } : t));
     } catch (err) {
-      setError("Google sign-in failed: " + err.message);
+      setError('Failed to mark task as done');
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    async function fetchGoogleData() {
+    let isMounted = true;
+    async function initGoogle() {
+      // Wait for Google Identity Services script to load
+      loadGISScript(async () => {
+        if (!isMounted) return;
+        setGoogleReady(true);
+        try {
+          // Check if already signed in
+          const currentUser = window.google?.accounts?.user?.get();
+          if (currentUser) {
+            setGoogleUser(currentUser);
+          }
+        } catch (e) {
+          console.error('Google login error:', e);
+          setError('Google login failed: ' + (e && e.message ? e.message : 'Unknown error'));
+        }
+      });
+    }
+    initGoogle();
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (googleReady && googleUser) {
+      navigate('/google', { replace: true });
+    }
+  }, [googleReady, googleUser, navigate]);
+
+  // Google OAuth2 Token Client for access tokens
+  const tokenClientRef = React.useRef(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (!googleReady) return;
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) return;
+    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_SCOPES,
+      callback: (response) => {
+        setOauthLoading(false);
+        if (response && response.access_token) {
+          setGoogleUser({ accessToken: response.access_token });
+        } else {
+          setError('Google login failed: No access token returned');
+        }
+      },
+    });
+  }, [googleReady]);
+
+  // Logout
+  const handleLogout = async () => {
+    setError(null);
+    try {
+      setGoogleUser(null);
+      setTasks([]);
+      setCalendarEvents([]);
+      navigate('/');
+    } catch (e) {
+      setError('Logout failed: ' + (e && e.message ? e.message : 'Unknown error'));
+    }
+  };
+
+  useEffect(() => {
+    async function fetchData() {
       if (!googleUser) return;
       setLoading(true);
       setError(null);
@@ -1157,7 +1268,7 @@ function GooglePage() {
         let tasksData = [];
         if (tasksRes.ok) {
           const tasksJson = await tasksRes.json();
-          if (tasksJson.items) {
+          if (Array.isArray(tasksJson.items) && tasksJson.items.length > 0) {
             tasksData = tasksJson.items.map(t => ({
               id: t.id,
               title: t.title,
@@ -1169,15 +1280,15 @@ function GooglePage() {
         }
         // Fetch Google Calendar events (limit to 20 for performance)
         const now = new Date().toISOString();
-        const calRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&maxResults=20&singleEvents=true&orderBy=startTime`, {
+        const calRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=20&orderBy=startTime&singleEvents=true&timeMin=${encodeURIComponent(now)}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         let calData = [];
         if (calRes.ok) {
           const calJson = await calRes.json();
-          if (calJson.items) {
+          if (Array.isArray(calJson.items) && calJson.items.length > 0) {
             calData = calJson.items.map((event, idx) => ({
-              id: idx + 1,
+              id: event.id || idx + 1,
               subject: event.summary || "(No subject)",
               start: event.start?.dateTime || event.start?.date || "",
               end: event.end?.dateTime || event.end?.date || "",
@@ -1188,12 +1299,20 @@ function GooglePage() {
         setTasks(tasksData);
         setCalendarEvents(calData);
       } catch (err) {
-        setError("Failed to fetch data from Google APIs");
+        let errorMsg = "Failed to fetch data from Google API";
+        if (err && err.message) {
+          errorMsg += ": " + err.message;
+        }
+        if (err && err.response) {
+          errorMsg += ` (status: ${err.response.status})`;
+        }
+        console.error("Google API error:", err);
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
     }
-    fetchGoogleData();
+    fetchData();
   }, [googleUser]);
 
   if (!googleReady || !googleUser) {
@@ -1218,10 +1337,16 @@ function GooglePage() {
         }}>
           <h1 style={{ fontWeight: 700, fontSize: 32, marginBottom: 16, color: '#a5b4fc' }}>Google Tasks & Calendar</h1>
           <button
-            onClick={loginGoogle}
-            disabled={!googleReady}
+            onClick={() => {
+              setOauthLoading(true);
+              if (tokenClientRef.current) {
+                tokenClientRef.current.requestAccessToken();
+              } else {
+                setError('Google OAuth client not ready');
+                setOauthLoading(false);
+              }
+            }}
             style={{
-              opacity: googleReady ? 1 : 0.5,
               fontSize: 18,
               padding: '12px 32px',
               background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)',
@@ -1229,15 +1354,15 @@ function GooglePage() {
               border: 'none',
               borderRadius: 8,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: oauthLoading ? 'not-allowed' : 'pointer',
               boxShadow: '0 2px 8px rgba(52,168,83,0.18)',
               marginTop: 12,
               transition: 'background 0.2s',
+              opacity: oauthLoading ? 0.6 : 1
             }}
-            onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)'}
-            onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)'}
+            disabled={oauthLoading}
           >
-            Sign in with Google
+            {oauthLoading ? 'Signing in...' : 'Sign in with Google'}
           </button>
           {error && <div style={{ color: '#ef4444', marginTop: 16, fontWeight: 500 }}>{error}</div>}
         </div>
@@ -1262,35 +1387,20 @@ function GooglePage() {
         fontWeight: 700,
         fontSize: 28,
         letterSpacing: 1,
-        boxShadow: '0 2px 8px rgba(66,133,244,0.18)',
+        boxShadow: '0 2px 8px rgba(99,102,241,0.18)',
         marginBottom: 32,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 12, padding: 0 }}>
             <svg height="36" viewBox="0 0 48 48" width="36" style={{ verticalAlign: 'middle' }}>
-              <circle cx="24" cy="24" r="22" fill="#4285f4" />
+              <circle cx="24" cy="24" r="22" fill="#6366f1" />
               <text x="24" y="30" textAnchor="middle" fontSize="20" fill="#fff" fontFamily="Inter, sans-serif">P</text>
             </svg>
           </button>
           <span>Google Tasks & Calendar</span>
-          <button
-            onClick={() => {
-              setGoogleUser(null);
-              setTimeout(() => { navigate('/'); }, 300);
-            }}
-            style={{
-              marginLeft: 24,
-              background: 'none',
-              border: '1px solid #4285f4',
-              color: '#a5b4fc',
-              borderRadius: 8,
-              padding: '6px 18px',
-              fontWeight: 600,
-              fontSize: 16,
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >Sign out</button>
+          {googleUser && (
+            <button onClick={handleLogout} style={{ marginLeft: 24, background: 'none', border: '1px solid #6366f1', color: '#a5b4fc', borderRadius: 8, padding: '6px 18px', fontWeight: 600, fontSize: 16, cursor: 'pointer', transition: 'background 0.2s' }}>Sign out</button>
+          )}
         </div>
       </header>
       <main style={{
@@ -1301,7 +1411,7 @@ function GooglePage() {
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
-        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
           <input
             type="text"
             value={nlpInput}
@@ -1310,24 +1420,6 @@ function GooglePage() {
             style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={nlpLoading || loading}
           />
-          {/* Add Task from Image button */}
-          <input
-            type="file"
-            accept="image/*"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleImageUpload}
-            disabled={visionLoading || nlpLoading || loading}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            style={{ background: '#f59e42', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontWeight: 600, cursor: 'pointer', fontSize: 18, marginLeft: 4, marginRight: 4, minWidth: 44, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: visionLoading ? 0.7 : 1 }}
-            disabled={visionLoading || nlpLoading || loading}
-            title="Add Task from Image"
-          >
-            {visionLoading ? '...' : <span role="img" aria-label="camera">📷</span>}
-          </button>
           <button
             type="button"
             aria-label={recording ? "Stop recording" : "Record speech"}
@@ -1335,6 +1427,7 @@ function GooglePage() {
             disabled={nlpLoading || loading}
             onClick={async () => {
               if (recording) {
+                // Stop recording
                 setRecording(false);
                 if (mediaRecorderRef.current) {
                   mediaRecorderRef.current.stop();
@@ -1401,13 +1494,32 @@ function GooglePage() {
           >
             <span role="img" aria-label={recording ? "stop" : "microphone"}>{recording ? "■" : "🎤"}</span>
           </button>
-          <button type="submit" style={{ background: 'linear-gradient(90deg, #34a853 0%, #4285f4 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
+          {/* Image upload for Google Vision OCR */}
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleImageUpload}
+            disabled={visionLoading || nlpLoading || loading}
+          />
+          <button
+            type="button"
+            style={{ background: '#34a853', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontWeight: 600, cursor: visionLoading ? 'not-allowed' : 'pointer', fontSize: 18, minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            disabled={visionLoading || nlpLoading || loading}
+            onClick={() => {
+              if (fileInputRef.current) fileInputRef.current.click();
+            }}
+            title="Extract text from image (Google Vision)"
+          >
+            {visionLoading ? '...' : <span role="img" aria-label="camera">📷</span>}
+          </button>
+          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
         </form>
-        {/* ...existing code... */}
-        {/* Standard Task Input with due date */}
-        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+        {/* Standard Task Input with due date and category */}
+        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
           <input
             name="title"
             type="text"
@@ -1418,14 +1530,25 @@ function GooglePage() {
           <input
             name="due"
             type="date"
+            value={manualDueDate}
+            onChange={e => setManualDueDate(e.target.value)}
             style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={loading}
           />
+          <select
+            name="category"
+            value={manualCategory}
+            onChange={e => setManualCategory(e.target.value)}
+            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
+            disabled={loading}
+          >
+            <option value="Work">Work</option>
+            <option value="Personal">Personal</option>
+          </select>
           <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
             Add
           </button>
         </form>
-        {/* ...existing code for tasks and calendar... */}
         <section style={{ marginBottom: 16 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Tasks
@@ -1436,63 +1559,60 @@ function GooglePage() {
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No tasks found.</div>
           ) : (
             <Carousel>
-              {tasks.map((task) => (
-                <div key={task.id} style={{
-                  background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
-                  boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(66,133,244,0.18)',
-                  borderRadius: 12,
-                  padding: '1.25rem 1rem',
-                  minWidth: 180,
-                  maxWidth: 200,
-                  flex: '0 0 180px',
-                  marginBottom: 8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  marginRight: 16,
-                  border: 'none',
-                  opacity: task.completed ? 0.95 : 1,
-                  transition: 'background 0.2s',
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{task.description}</div>
-                  {task.due && (
-                    <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
-                      Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+              {tasks.map((task, idx) => {
+                // Extract category from description/notes if present
+                let category = null;
+                let description = task.description || "";
+                const catMatch = description.match(/Category:\s*([A-Za-z]+)/i);
+                if (catMatch) {
+                  category = catMatch[1];
+                  // Remove the category line from description for display
+                  description = description.replace(/Category:\s*[A-Za-z]+\s*/i, '').trim();
+                }
+                return (
+                  <div key={task.id} style={{
+                    background: task.completed ? 'linear-gradient(90deg, #334155 0%, #475569 100%)' : '#23232a',
+                    boxShadow: task.completed ? '0 2px 12px rgba(59,130,246,0.10)' : '0 2px 12px rgba(59,130,246,0.18)',
+                    borderRadius: 12,
+                    padding: '1.25rem 1rem',
+                    minWidth: 180,
+                    maxWidth: 200,
+                    flex: '0 0 180px',
+                    marginBottom: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    marginRight: idx === tasks.length - 1 ? 0 : 16,
+                    border: 'none',
+                    opacity: task.completed ? 0.95 : 1,
+                    transition: 'background 0.2s',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
+                    {category && (
+                      <div style={{ color: '#34a853', fontWeight: 600, marginBottom: 6 }}>Category: {category}</div>
+                    )}
+                    {description && (
+                      <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{description}</div>
+                    )}
+                    {task.due && (
+                      <div style={{ color: '#f59e42', marginBottom: 8, fontWeight: 500 }}>
+                        Due: {formatDateCustom(task.due)} {formatTime(task.due)}
+                      </div>
+                    )}
+                    <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
+                      Status: {task.completed ? 'Completed' : 'Not Started'}
                     </div>
-                  )}
-                  <div style={{ fontWeight: 500, color: task.completed ? '#22c55e' : '#f59e42', marginBottom: 8 }}>
-                    Status: {task.completed ? 'Completed' : 'Not Started'}
+                    {!task.completed && (
+                      <button
+                        style={{
+                          background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
+                        }}
+                        onClick={() => handleMarkAsDone(task)}
+                      >Mark as Done</button>
+                    )}
                   </div>
-                  {!task.completed && (
-                    <button
-                      style={{
-                        background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 600, cursor: 'pointer', marginTop: 4
-                      }}
-                      onClick={async () => {
-                        setLoading(true);
-                        setError(null);
-                        try {
-                          await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${task.id}`,
-                            {
-                              method: 'PATCH',
-                              headers: {
-                                'Authorization': `Bearer ${googleUser.accessToken}`,
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({ status: 'completed' })
-                            }
-                          );
-                        } catch (err) {
-                          setError('Failed to mark task as done');
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                    >Mark as Done</button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </Carousel>
           )}
         </section>
@@ -1509,7 +1629,7 @@ function GooglePage() {
               {calendarEvents.map((event) => (
                 <div key={event.id} style={{
                   background: '#23232a',
-                  boxShadow: '0 2px 12px rgba(66,133,244,0.18)',
+                  boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
                   borderRadius: 12,
                   padding: '1.5rem 1.25rem',
                   minWidth: 240,
