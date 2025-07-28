@@ -789,26 +789,6 @@ function MicrosoftPage() {
           >
             <span role="img" aria-label={recording ? "stop" : "microphone"}>{recording ? "■" : "🎤"}</span>
           </button>
-          {/* Image upload for Google Vision OCR */}
-          <input
-            type="file"
-            accept="image/*"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleImageUpload}
-            disabled={visionLoading || nlpLoading || loading}
-          />
-          <button
-            type="button"
-            style={{ background: '#34a853', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontWeight: 600, cursor: visionLoading ? 'not-allowed' : 'pointer', fontSize: 18, minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            disabled={visionLoading || nlpLoading || loading}
-            onClick={() => {
-              if (fileInputRef.current) fileInputRef.current.click();
-            }}
-            title="Extract text from image (Google Vision)"
-          >
-            {visionLoading ? '...' : <span role="img" aria-label="camera">📷</span>}
-          </button>
           <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
