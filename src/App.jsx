@@ -936,6 +936,52 @@ function GooglePage() {
   const [nlpLoading, setNlpLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = React.useRef(null);
+  // Vision API image upload
+  const fileInputRef = React.useRef(null);
+  const [visionLoading, setVisionLoading] = useState(false);
+
+  // Handle image upload and OCR
+  const handleImageUpload = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    setVisionLoading(true);
+    setError(null);
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result.split(',')[1];
+        // Call Google Vision API
+        const apiKey = "AIzaSyCQGLCYuj8Ff3tDamBmjVMnLkT87cDvQKE";
+        const visionRes = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              requests: [
+                {
+                  image: { content: base64 },
+                  features: [{ type: 'TEXT_DETECTION' }]
+                }
+              ]
+            })
+          }
+        );
+        if (!visionRes.ok) throw new Error('Vision API error');
+        const visionJson = await visionRes.json();
+        const text = visionJson.responses?.[0]?.fullTextAnnotation?.text || '';
+        if (text) setNlpInput(text.trim());
+        else setError('No text detected in image');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError('Image OCR failed');
+    } finally {
+      setVisionLoading(false);
+      // Reset file input value so same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   // ...existing code...
 
   // Standard task creation (unchanged)
@@ -1255,7 +1301,7 @@ function GooglePage() {
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
-        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
           <input
             type="text"
             value={nlpInput}
@@ -1264,6 +1310,24 @@ function GooglePage() {
             style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
             disabled={nlpLoading || loading}
           />
+          {/* Add Task from Image button */}
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleImageUpload}
+            disabled={visionLoading || nlpLoading || loading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            style={{ background: '#f59e42', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontWeight: 600, cursor: 'pointer', fontSize: 18, marginLeft: 4, marginRight: 4, minWidth: 44, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: visionLoading ? 0.7 : 1 }}
+            disabled={visionLoading || nlpLoading || loading}
+            title="Add Task from Image"
+          >
+            {visionLoading ? '...' : <span role="img" aria-label="camera">📷</span>}
+          </button>
           <button
             type="button"
             aria-label={recording ? "Stop recording" : "Record speech"}
