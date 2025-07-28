@@ -517,15 +517,19 @@ function MicrosoftPage() {
   // Logout
   const handleLogout = async () => {
     setError(null);
-    try {
-      await msalInstance.logoutRedirect({ account });
-      setAccount(null);
-      setTasks([]);
-      setCalendarEvents([]);
-      navigate('/');
-    } catch (e) {
-      setError('Logout failed: ' + (e && e.message ? e.message : 'Unknown error'));
+    // Remove all accounts from msalInstance to clear local session
+    if (msalInstance && msalInstance.getAllAccounts) {
+      const allAccounts = msalInstance.getAllAccounts();
+      if (allAccounts && allAccounts.length > 0) {
+        allAccounts.forEach(acc => {
+          msalInstance.logoutPopup({ account: acc, postLogoutRedirectUri: '/' });
+        });
+      }
     }
+    setAccount(null);
+    setTasks([]);
+    setCalendarEvents([]);
+    window.location.replace('/');
   };
 
   const loginMicrosoft = async () => {
