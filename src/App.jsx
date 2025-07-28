@@ -376,6 +376,7 @@ function MicrosoftPage() {
       let title = nlpInput;
       let notes = "";
       let due = "";
+      let nlpCategory = null;
       if (nlpJson.entities) {
         // Find a DATE entity
         const dateEntity = nlpJson.entities.find(e => e.type === "DATE");
@@ -388,10 +389,11 @@ function MicrosoftPage() {
             due = d.toISOString();
           }
         }
-        // Use first non-DATE entity as title
+        // Use first non-DATE entity as title and use its type as category
         const titleEntity = nlpJson.entities.find(e => e.type !== "DATE");
         if (titleEntity) {
           title = titleEntity.name;
+          nlpCategory = titleEntity.type;
         }
         notes = nlpInput;
       }
@@ -411,9 +413,10 @@ function MicrosoftPage() {
       const firstListId = listsJson.value[0].id;
       // Build body
       const body = { title };
-      // Always include category in body content
-      let bodyContent = `Category: ${manualCategory}`;
-      if (notes) bodyContent += `\n${notes}`;
+      // Always include NLP category in body content
+      // Only include the category value in notes (not 'Category: ...')
+      let bodyContent = nlpCategory ? nlpCategory : "";
+      if (notes) bodyContent += notes ? `\n${notes}` : "";
       body.body = { content: bodyContent, contentType: "text" };
       if (due) body.dueDateTime = { dateTime: due, timeZone: "UTC" };
       const res = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${firstListId}/tasks`, {
@@ -797,6 +800,7 @@ function MicrosoftPage() {
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
           </button>
         </form>
+        {/* NLP JSON Response Debug Output removed */}
         {/* Standard Task Input with due date and category */}
         <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
           <input
@@ -842,11 +846,11 @@ function MicrosoftPage() {
                 // Extract category from description/notes if present
                 let category = null;
                 let description = task.description || "";
-                const catMatch = description.match(/Category:\s*([A-Za-z]+)/i);
-                if (catMatch) {
-                  category = catMatch[1];
-                  // Remove the category line from description for display
-                  description = description.replace(/Category:\s*[A-Za-z]+\s*/i, '').trim();
+                // If the first line is a known category value, treat it as category
+                const lines = description.split(/\r?\n/);
+                if (lines.length > 0 && lines[0].match(/^[A-Z_]+$/i)) {
+                  category = lines[0];
+                  description = lines.slice(1).join('\n').trim();
                 }
                 return (
                   <div key={task.id} style={{
@@ -868,7 +872,17 @@ function MicrosoftPage() {
                   }}>
                     <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                     {category && (
-                      <div style={{ color: '#34a853', fontWeight: 600, marginBottom: 6 }}>Category: {category}</div>
+                      <div style={{
+                        color: '#3b82f6',
+                        fontWeight: 700,
+                        marginBottom: 6,
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                        wordBreak: 'break-all',
+                      }}>{category}</div>
                     )}
                     {description && (
                       <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{description}</div>
@@ -1085,10 +1099,11 @@ function GooglePage() {
       );
       if (!nlpRes.ok) throw new Error("NLP API error");
       const nlpJson = await nlpRes.json();
-      // Extract title and date/time from entities
+      // Extract title, category (type), and date/time from entities
       let title = nlpInput;
       let notes = "";
       let due = "";
+      let nlpCategory = null;
       if (nlpJson.entities) {
         // Find a DATE entity
         const dateEntity = nlpJson.entities.find(e => e.type === "DATE");
@@ -1106,19 +1121,20 @@ function GooglePage() {
             due = null;
           }
         }
-        // Use first non-DATE entity as title
+        // Use first non-DATE entity as title and get its type as category
         const titleEntity = nlpJson.entities.find(e => e.type !== "DATE");
         if (titleEntity) {
           title = titleEntity.name;
+          nlpCategory = titleEntity.type;
         }
         notes = nlpInput;
       }
       // Create Google Task with extracted info
       const accessToken = googleUser.accessToken;
       const body = { title };
-      // Always include category in notes
-      let notesContent = `Category: ${manualCategory}`;
-      if (notes) notesContent += `\n${notes}`;
+      // Only include the category value in notes (not 'Category: ...')
+      let notesContent = nlpCategory ? nlpCategory : "";
+      if (notes) notesContent += notes ? `\n${notes}` : "";
       body.notes = notesContent;
       if (due) body.due = due;
       const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
@@ -1547,11 +1563,11 @@ function GooglePage() {
                 // Extract category from description/notes if present
                 let category = null;
                 let description = task.description || "";
-                const catMatch = description.match(/Category:\s*([A-Za-z]+)/i);
-                if (catMatch) {
-                  category = catMatch[1];
-                  // Remove the category line from description for display
-                  description = description.replace(/Category:\s*[A-Za-z]+\s*/i, '').trim();
+                // If the first line is a known category value, treat it as category
+                const lines = description.split(/\r?\n/);
+                if (lines.length > 0 && lines[0].match(/^[A-Z_]+$/i)) {
+                  category = lines[0];
+                  description = lines.slice(1).join('\n').trim();
                 }
                 return (
                   <div key={task.id} style={{
@@ -1573,7 +1589,22 @@ function GooglePage() {
                   }}>
                     <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                     {category && (
-                      <div style={{ color: '#34a853', fontWeight: 600, marginBottom: 6 }}>Category: {category}</div>
+                      <div
+                        style={{
+                          color: '#3b82f6',
+                          fontWeight: 700,
+                          marginBottom: 6,
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={category}
+                      >
+                        {category}
+                      </div>
                     )}
                     {description && (
                       <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{description}</div>
