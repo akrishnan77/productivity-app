@@ -919,28 +919,73 @@ function MicrosoftPage() {
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
             <Carousel>
-              {calendarEvents.map((event) => (
-                <div key={event.id} style={{
-                  background: '#23232a',
-                  boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
-                  borderRadius: 12,
-                  padding: '1.5rem 1.25rem',
-                  minWidth: 240,
-                  maxWidth: 280,
-                  flex: '0 0 240px',
-                  marginBottom: 8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  marginRight: 16,
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
-                    {event.start ? `${formatDateCustom(event.start)} ` : ''}{formatTime(event.start)} - {event.end ? `${formatDateCustom(event.end)} ` : ''}{formatTime(event.end)}
+              {calendarEvents.map((event) => {
+                // Parse start time and date
+                const startDate = event.start ? new Date(event.start) : null;
+                const endDate = event.end ? new Date(event.end) : null;
+                const timeStr = startDate ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const dateStr = startDate ? startDate.toLocaleString('default', { month: 'long', day: 'numeric' }) : '';
+                // Duration calculation
+                let durationStr = '';
+                if (startDate && endDate) {
+                  const ms = endDate - startDate;
+                  const mins = Math.round(ms / 60000);
+                  if (mins > 0) durationStr = `${mins} min`;
+                }
+                // Meeting type detection (simple)
+                let meetingType = '';
+                if (event.location && event.location.toLowerCase().includes('teams')) {
+                  meetingType = 'Microsoft Teams Meeting';
+                } else if (event.location && event.location.toLowerCase().includes('zoom')) {
+                  meetingType = 'Zoom Meeting';
+                } else if (event.location && event.location.toLowerCase().includes('google meet')) {
+                  meetingType = 'Google Meet';
+                }
+                return (
+                  <div key={event.id} style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    background: '#23232a',
+                    boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
+                    borderRadius: 12,
+                    minWidth: 240,
+                    maxWidth: 320,
+                    marginBottom: 8,
+                    marginRight: 16,
+                    padding: 0,
+                  }}>
+                    {/* Accent bar */}
+                    <div style={{
+                      width: 6,
+                      background: 'linear-gradient(180deg, #6366f1 0%, #3b82f6 100%)',
+                      borderTopLeftRadius: 12,
+                      borderBottomLeftRadius: 12,
+                    }} />
+                    {/* Card content */}
+                    <div style={{
+                      padding: '1.25rem 1rem',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, fontSize: 22, color: '#fff' }}>{timeStr}</span>
+                        <span style={{ fontSize: 14, color: '#a5b4fc', fontWeight: 500 }}>{dateStr}</span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', marginBottom: 4 }}>{event.subject}</div>
+                      <div style={{ color: '#cbd5e1', fontSize: 15, marginBottom: 2 }}>
+                        {durationStr}
+                        {meetingType ? ` · ${meetingType}` : ''}
+                      </div>
+                      {event.location && !meetingType && (
+                        <div style={{ color: '#cbd5e1', fontSize: 14, marginTop: 2 }}>{event.location}</div>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
-                </div>
-              ))}
+                );
+              })}
             </Carousel>
           )}
         </section>
@@ -1641,28 +1686,73 @@ function GooglePage() {
             <div style={{ textAlign: 'center', color: '#cbd5e1', fontSize: 18 }}>No upcoming events.</div>
           ) : (
             <Carousel>
-              {calendarEvents.map((event) => (
-                <div key={event.id} style={{
-                  background: '#23232a',
-                  boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
-                  borderRadius: 12,
-                  padding: '1.5rem 1.25rem',
-                  minWidth: 240,
-                  maxWidth: 280,
-                  flex: '0 0 240px',
-                  marginBottom: 8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  marginRight: 16,
-                }}>
-                  <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{event.subject}</div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>
-                    {event.start ? `${formatDateCustom(event.start)} ` : ''}{formatTime(event.start)} - {event.end ? `${formatDateCustom(event.end)} ` : ''}{formatTime(event.end)}
+              {calendarEvents.map((event) => {
+                // Parse start time and date
+                const startDate = event.start ? new Date(event.start) : null;
+                const endDate = event.end ? new Date(event.end) : null;
+                const timeStr = startDate ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const dateStr = startDate ? startDate.toLocaleString('default', { month: 'long', day: 'numeric' }) : '';
+                // Duration calculation
+                let durationStr = '';
+                if (startDate && endDate) {
+                  const ms = endDate - startDate;
+                  const mins = Math.round(ms / 60000);
+                  if (mins > 0) durationStr = `${mins} min`;
+                }
+                // Meeting type detection (simple)
+                let meetingType = '';
+                if (event.location && event.location.toLowerCase().includes('teams')) {
+                  meetingType = 'Microsoft Teams Meeting';
+                } else if (event.location && event.location.toLowerCase().includes('zoom')) {
+                  meetingType = 'Zoom Meeting';
+                } else if (event.location && event.location.toLowerCase().includes('google meet')) {
+                  meetingType = 'Google Meet';
+                }
+                return (
+                  <div key={event.id} style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    background: '#23232a',
+                    boxShadow: '0 2px 12px rgba(99,102,241,0.18)',
+                    borderRadius: 12,
+                    minWidth: 240,
+                    maxWidth: 320,
+                    marginBottom: 8,
+                    marginRight: 16,
+                    padding: 0,
+                  }}>
+                    {/* Accent bar */}
+                    <div style={{
+                      width: 6,
+                      background: 'linear-gradient(180deg, #6366f1 0%, #3b82f6 100%)',
+                      borderTopLeftRadius: 12,
+                      borderBottomLeftRadius: 12,
+                    }} />
+                    {/* Card content */}
+                    <div style={{
+                      padding: '1.25rem 1rem',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, fontSize: 22, color: '#fff' }}>{timeStr}</span>
+                        <span style={{ fontSize: 14, color: '#a5b4fc', fontWeight: 500 }}>{dateStr}</span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 18, color: '#fff', marginBottom: 4 }}>{event.subject}</div>
+                      <div style={{ color: '#cbd5e1', fontSize: 15, marginBottom: 2 }}>
+                        {durationStr}
+                        {meetingType ? ` · ${meetingType}` : ''}
+                      </div>
+                      {event.location && !meetingType && (
+                        <div style={{ color: '#cbd5e1', fontSize: 14, marginTop: 2 }}>{event.location}</div>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{event.location}</div>
-                </div>
-              ))}
+                );
+              })}
             </Carousel>
           )}
         </section>
