@@ -950,6 +950,93 @@ function MicrosoftPage() {
 
 
 function GooglePage() {
+  // All state declarations must come first
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [aiMessages, setAiMessages] = React.useState([
+    { role: 'system', content: 'You are a helpful productivity assistant. You can answer questions about Google Tasks and Calendar, suggest productivity tips, and help the user manage their time.' }
+  ]);
+  const [aiInput, setAiInput] = React.useState("");
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [googleReady, setGoogleReady] = React.useState(false);
+  const [googleUser, setGoogleUser] = React.useState(null);
+  const [error, setError] = React.useState(null);
+  const [tasks, setTasks] = React.useState([]);
+  const [calendarEvents, setCalendarEvents] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  // Prevent multiple concurrent Google login requests
+  const [googleLoginInProgress, setGoogleLoginInProgress] = React.useState(false);
+  // NLP-powered Google task creation
+  const [nlpInput, setNlpInput] = React.useState("");
+  const [nlpLoading, setNlpLoading] = React.useState(false);
+  const [recording, setRecording] = React.useState(false);
+  const mediaRecorderRef = React.useRef(null);
+  // Vision API image upload
+  const fileInputRef = React.useRef(null);
+  const [visionLoading, setVisionLoading] = React.useState(false);
+  // Standard task creation with category
+  const [manualCategory, setManualCategory] = React.useState("Work");
+  const [manualDueDate, setManualDueDate] = React.useState("");
+
+  // AI-powered suggestions (basic, local)
+  const today = new Date();
+  const tasksDueToday = tasks.filter(t => t.due && new Date(t.due).toDateString() === today.toDateString());
+  const overdueTasks = tasks.filter(t => t.due && new Date(t.due) < today && !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
+  const pendingTasks = tasks.filter(t => !t.completed);
+  const eventsToday = calendarEvents.filter(e => {
+    if (!e.start) return false;
+    const d = new Date(e.start);
+    return d.toDateString() === today.toDateString();
+  });
+  const eventsThisWeek = calendarEvents.filter(e => {
+    if (!e.start) return false;
+    const d = new Date(e.start);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    return d >= weekStart && d < weekEnd;
+  });
+
+  // AI chat handler (Gemini API, requires your API key)
+  async function handleAiSend(e) {
+    e.preventDefault();
+    if (!aiInput.trim()) return;
+    setAiLoading(true);
+    const newMessages = [...aiMessages, { role: 'user', content: aiInput }];
+    setAiMessages(newMessages);
+    setAiInput("");
+    try {
+      // Replace with your Gemini API key
+      const apiKey = "AIzaSyBOY2dhOF13OF9ie-DMv1nD32epoBIZ5-I";
+      // Gemini API expects a different format
+      const res = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=" + apiKey,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              ...newMessages.slice(1).map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+              })),
+              { role: 'user', parts: [{ text: aiInput }] }
+            ]
+          })
+        }
+      );
+      if (!res.ok) throw new Error('Gemini API error');
+      const data = await res.json();
+      // Gemini's response structure
+      const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't answer that.";
+      setAiMessages([...newMessages, { role: 'assistant', content: aiReply }]);
+    } catch (err) {
+      setAiMessages([...newMessages, { role: 'assistant', content: "AI error: " + err.message }]);
+    } finally {
+      setAiLoading(false);
+    }
+  }
   const navigate = useNavigate();
   // Voice confirmation using Google Text-to-Speech API
   async function speakConfirmation() {
@@ -977,23 +1064,7 @@ function GooglePage() {
       // Ignore TTS errors
     }
   }
-  const [googleReady, setGoogleReady] = useState(false);
-  const [googleUser, setGoogleUser] = useState(null);
-  const [error, setError] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [calendarEvents, setCalendarEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  // Prevent multiple concurrent Google login requests
-  const [googleLoginInProgress, setGoogleLoginInProgress] = useState(false);
-
-  // NLP-powered Google task creation
-  const [nlpInput, setNlpInput] = useState("");
-  const [nlpLoading, setNlpLoading] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const mediaRecorderRef = React.useRef(null);
-  // Vision API image upload
-  const fileInputRef = React.useRef(null);
-  const [visionLoading, setVisionLoading] = useState(false);
+  // ...existing code...
 
   // Handle image upload and OCR
   const handleImageUpload = async (event) => {
@@ -1038,8 +1109,7 @@ function GooglePage() {
     }
   };
   // Standard task creation with category
-  const [manualCategory, setManualCategory] = useState("Work");
-  const [manualDueDate, setManualDueDate] = useState("");
+  // ...existing code...
   const handleCreateTask = async (title) => {
     if (!googleUser) return;
     setLoading(true);
@@ -1369,7 +1439,31 @@ function GooglePage() {
   }
 
   return (
-    <div style={{
+    <>
+      {/* Floating AI Assistant Button & Widget */}
+      <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 1000 }}>
+        <button onClick={() => setAiOpen(v => !v)} style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '50%', width: 60, height: 60, fontSize: 32, boxShadow: '0 2px 12px rgba(99,102,241,0.18)', cursor: 'pointer' }} title="Ask AI">
+          🤖
+        </button>
+        {aiOpen && (
+          <div style={{ position: 'absolute', bottom: 70, right: 0, width: 340, background: '#23232a', color: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.32)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 18, marginBottom: 4 }}>AI Assistant</div>
+            <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 8, fontSize: 15, background: '#18181b', borderRadius: 8, padding: 8 }}>
+              {aiMessages.slice(1).map((m, i) => (
+                <div key={i} style={{ marginBottom: 6, color: m.role === 'assistant' ? '#a5b4fc' : '#fff', textAlign: m.role === 'assistant' ? 'left' : 'right' }}>
+                  <span style={{ fontWeight: m.role === 'assistant' ? 600 : 400 }}>{m.role === 'assistant' ? 'AI: ' : 'You: '}</span>{m.content}
+                </div>
+              ))}
+              {aiLoading && <div style={{ color: '#a5b4fc' }}>AI is typing...</div>}
+            </div>
+            <form onSubmit={handleAiSend} style={{ display: 'flex', gap: 6 }}>
+              <input type="text" value={aiInput} onChange={e => setAiInput(e.target.value)} placeholder="Ask anything..." style={{ flex: 1, borderRadius: 8, border: '1px solid #6366f1', padding: '8px 10px', background: '#18181b', color: '#fff', fontSize: 15 }} disabled={aiLoading} />
+              <button type="submit" style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, padding: '0 14px', fontWeight: 600, fontSize: 16, cursor: aiLoading ? 'not-allowed' : 'pointer', opacity: aiLoading ? 0.7 : 1 }} disabled={aiLoading}>Send</button>
+            </form>
+          </div>
+        )}
+      </div>
+      <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
       fontFamily: 'Inter, sans-serif',
@@ -1407,6 +1501,33 @@ function GooglePage() {
         padding: '0 2rem',
         boxSizing: 'border-box',
       }}>
+        {/* AI-powered Suggestions/Analytics */}
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 8, fontSize: 22 }}>AI Suggestions & Analytics</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, fontSize: 16 }}>
+            <div style={{ background: '#23232a', color: '#cbd5e1', borderRadius: 10, padding: '1rem 1.5rem', minWidth: 180, maxWidth: 220, boxShadow: '0 2px 8px rgba(99,102,241,0.10)', textAlign: 'center', fontWeight: 500 }}>
+              <div style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 18, marginBottom: 4 }}>Tasks</div>
+              <div>Total: {tasks.length}</div>
+              <div>Completed: {completedTasks.length}</div>
+              <div>Pending: {pendingTasks.length}</div>
+              <div>Due Today: {tasksDueToday.length}</div>
+              <div>Overdue: {overdueTasks.length}</div>
+            </div>
+            <div style={{ background: '#23232a', color: '#cbd5e1', borderRadius: 10, padding: '1rem 1.5rem', minWidth: 180, maxWidth: 220, boxShadow: '0 2px 8px rgba(99,102,241,0.10)', textAlign: 'center', fontWeight: 500 }}>
+              <div style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 18, marginBottom: 4 }}>Calendar</div>
+              <div>Events Today: {eventsToday.length}</div>
+              <div>Events This Week: {eventsThisWeek.length}</div>
+              <div>Total Events: {calendarEvents.length}</div>
+            </div>
+          </div>
+          {/* Simple suggestions */}
+          <div style={{ marginTop: 16, color: '#cbd5e1', textAlign: 'center', fontSize: 16 }}>
+            {overdueTasks.length > 0 && <div>⚠️ You have {overdueTasks.length} overdue task(s). Consider completing them soon!</div>}
+            {tasksDueToday.length > 0 && <div>📅 {tasksDueToday.length} task(s) are due today.</div>}
+            {eventsToday.length > 3 && <div>🕒 You have a busy day with {eventsToday.length} events today.</div>}
+            {pendingTasks.length === 0 && <div>🎉 All tasks are completed! Great job!</div>}
+          </div>
+        </section>
         {/* NLP Task Input */}
         <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 700, marginLeft: 'auto', marginRight: 'auto' }}>
           <input
@@ -1675,6 +1796,7 @@ function GooglePage() {
         {error && <div style={{ color: '#ef4444', marginTop: 24, textAlign: 'center', fontWeight: 500 }}>{error}</div>}
       </main>
     </div>
+    </>
   );
 }
 
