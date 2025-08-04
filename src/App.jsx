@@ -697,7 +697,7 @@ function MicrosoftPage() {
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
-        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 700, marginLeft: 'auto', marginRight: 'auto' }}>
           <input
             type="text"
             value={nlpInput}
@@ -785,37 +785,6 @@ function MicrosoftPage() {
           </button>
         </form>
         {/* NLP JSON Response Debug Output removed */}
-        {/* Standard Task Input with due date and category */}
-        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
-          <input
-            name="title"
-            type="text"
-            placeholder="Add a new task..."
-            style={{ flex: 2, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          />
-          <input
-            name="due"
-            type="date"
-            value={manualDueDate}
-            onChange={e => setManualDueDate(e.target.value)}
-            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          />
-          <select
-            name="category"
-            value={manualCategory}
-            onChange={e => setManualCategory(e.target.value)}
-            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          >
-            <option value="Work">Work</option>
-            <option value="Personal">Personal</option>
-          </select>
-          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
-            Add
-          </button>
-        </form>
         <section style={{ marginBottom: 16 }}>
           <h2 style={{ textAlign: 'center', fontWeight: 600, color: '#a5b4fc', marginBottom: 12, fontSize: 24 }}>
             Your Tasks
@@ -1439,7 +1408,7 @@ function GooglePage() {
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
-        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+        <form onSubmit={handleNlpTask} style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 700, marginLeft: 'auto', marginRight: 'auto' }}>
           <input
             type="text"
             value={nlpInput}
@@ -1544,37 +1513,6 @@ function GooglePage() {
           </button>
           <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={nlpLoading || loading}>
             {nlpLoading ? 'Processing...' : 'Add (NLP)'}
-          </button>
-        </form>
-        {/* Standard Task Input with due date and category */}
-        <form onSubmit={e => { e.preventDefault(); if (e.target.title.value.trim()) handleCreateTask(e.target.title.value); }} style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', alignItems: 'center' }}>
-          <input
-            name="title"
-            type="text"
-            placeholder="Add a new task..."
-            style={{ flex: 2, padding: '12px 16px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          />
-          <input
-            name="due"
-            type="date"
-            value={manualDueDate}
-            onChange={e => setManualDueDate(e.target.value)}
-            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          />
-          <select
-            name="category"
-            value={manualCategory}
-            onChange={e => setManualCategory(e.target.value)}
-            style={{ flex: 1, padding: '12px 8px', borderRadius: 8, border: '1px solid #3f3f46', background: '#23232a', color: '#cbd5e1', fontSize: 16 }}
-            disabled={loading}
-          >
-            <option value="Work">Work</option>
-            <option value="Personal">Personal</option>
-          </select>
-          <button type="submit" style={{ background: 'linear-gradient(90deg, #4285f4 0%, #34a853 100%)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', fontWeight: 600, cursor: 'pointer', fontSize: 18 }} disabled={loading}>
-            Add
           </button>
         </form>
         <section style={{ marginBottom: 16 }}>
