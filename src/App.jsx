@@ -112,6 +112,7 @@ function Carousel({ children }) {
         ref={containerRef}
         style={{
           display: 'flex',
+          justifyContent: 'center',
           gap: `${gap}px`,
           overflowX: 'auto',
           scrollBehavior: 'smooth',
