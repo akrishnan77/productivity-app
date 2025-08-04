@@ -76,28 +76,26 @@ function Carousel({ children }) {
   const [scroll, setScroll] = useState(0);
   const containerRef = React.useRef(null);
   const cardWidth = 280; // match card maxWidth
-  const visibleCards = 1; // show 1 card at a time
-  const totalCards = React.Children.count(children);
-  const maxScroll = Math.max(0, totalCards - visibleCards);
+  const gap = 24;
 
-  const handleLeft = () => setScroll(s => Math.max(0, s - 1));
-  const handleRight = () => setScroll(s => Math.min(maxScroll, s + 1));
-
-  React.useEffect(() => {
+  const handleLeft = () => {
     if (containerRef.current) {
-      containerRef.current.scrollTo({ left: scroll * (cardWidth + 24), behavior: 'smooth' });
+      containerRef.current.scrollBy({ left: -(cardWidth + gap), behavior: 'smooth' });
     }
-  }, [scroll]);
+  };
+  const handleRight = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollBy({ left: cardWidth + gap, behavior: 'smooth' });
+    }
+  };
 
-  // Render a slice of visible cards
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <button
         onClick={handleLeft}
-        disabled={scroll === 0}
         style={{
-          position: 'relative',
-          left: 0,
+          position: 'absolute',
+          left: -16,
           zIndex: 2,
           background: '#23232a',
           color: '#a5b4fc',
@@ -107,45 +105,32 @@ function Carousel({ children }) {
           height: 36,
           fontSize: 24,
           cursor: 'pointer',
-          opacity: scroll === 0 ? 0.5 : 1,
-          marginRight: 16,
+          opacity: 0.8,
         }}
       >&lt;</button>
       <div
         ref={containerRef}
         style={{
           display: 'flex',
-          gap: 24,
-          overflow: 'hidden',
+          gap: `${gap}px`,
+          overflowX: 'auto',
           scrollBehavior: 'smooth',
-          paddingBottom: 8,
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: 320,
-          width: `${cardWidth}px`, // exactly 1 card wide
-          maxWidth: `${cardWidth}px`,
-          marginLeft: 'auto',
-          marginRight: 'auto',
+          padding: '8px 0',
+          width: '100%',
+          scrollbarWidth: 'none', // for Firefox
         }}
       >
-        {
-          (() => {
-            const arr = React.Children.toArray(children);
-            // If not enough cards to fill a full set, only show the remaining cards
-            const start = Math.min(scroll, Math.max(0, arr.length - visibleCards));
-            const end = Math.min(start + visibleCards, arr.length);
-            return arr.slice(start, end).map((child, idx) => (
-              <div key={idx} style={{ flex: `0 0 ${cardWidth}px`, maxWidth: cardWidth }}>{child}</div>
-            ));
-          })()
-        }
+        {React.Children.map(children, (child, idx) => (
+          <div key={idx} style={{ flex: `0 0 ${cardWidth}px`, maxWidth: cardWidth }}>
+            {child}
+          </div>
+        ))}
       </div>
       <button
         onClick={handleRight}
-        disabled={scroll === maxScroll}
         style={{
-          position: 'relative',
-          right: 0,
+          position: 'absolute',
+          right: -16,
           zIndex: 2,
           background: '#23232a',
           color: '#a5b4fc',
@@ -155,8 +140,7 @@ function Carousel({ children }) {
           height: 36,
           fontSize: 24,
           cursor: 'pointer',
-          opacity: scroll === maxScroll ? 0.5 : 1,
-          marginLeft: 16,
+          opacity: 0.8,
         }}
       >&gt;</button>
     </div>
@@ -706,10 +690,9 @@ function MicrosoftPage() {
         </div>
       </header>
       <main style={{
-        maxWidth: 600,
-        margin: '0 auto',
-        padding: '0 1rem',
         width: '100%',
+        margin: '0 auto',
+        padding: '0 2rem',
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
@@ -1449,10 +1432,9 @@ function GooglePage() {
         </div>
       </header>
       <main style={{
-        maxWidth: 600,
-        margin: '0 auto',
-        padding: '0 1rem',
         width: '100%',
+        margin: '0 auto',
+        padding: '0 2rem',
         boxSizing: 'border-box',
       }}>
         {/* NLP Task Input */}
@@ -1634,22 +1616,17 @@ function GooglePage() {
                   }}>
                     <div style={{ fontWeight: 700, fontSize: 20, color: '#a5b4fc', marginBottom: 8 }}>{task.title}</div>
                     {category && (
-                      <div
-                        style={{
-                          color: '#3b82f6',
-                          fontWeight: 700,
-                          marginBottom: 6,
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        title={category}
-                      >
-                        {category}
-                      </div>
+                      <div style={{
+                        color: '#3b82f6',
+                        fontWeight: 700,
+                        marginBottom: 6,
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                        wordBreak: 'break-all',
+                      }}>{category}</div>
                     )}
                     {description && (
                       <div style={{ color: '#cbd5e1', marginBottom: 8 }}>{description}</div>
